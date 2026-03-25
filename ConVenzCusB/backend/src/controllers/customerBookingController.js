@@ -1,0 +1,172 @@
+import axios from "axios";
+import Booking from "../models/bookingModel.js";
+import User from "../models/userModel.js";
+import { findBestVendor } from "../utils/vendorMatcherFixed.js";
+import { sendNotification } from "../utils/sendNotification.js";
+import asyncHandler from "../utils/asyncHandler.js";
+
+/* ------------------------------------------------------------
+   📝 CREATE BOOKING & NOTIFY VENDOR BACKEND
+------------------------------------------------------------ */
+export const createCustomerBooking = asyncHandler(async (req, res) => {
+  const { selectedService, jobDescription, date, time, location } = req.body;
+  const userId = req.user.user_id; // Secure from token
+
+  // Verify customer
+  const customer = await User.findOne({ user_id: userId });
+  if (!customer) {
+    res.status(404);
+    throw new Error("Customer not found");
+  }
+
+  // Create booking
+  const newBooking = await Booking.create({
+    userId,
+    selectedService,
+    jobDescription,
+    date,
+    time,
+    location: {
+      type: "Point",
+      coordinates: [location.longitude, location.latitude],
+      address: location.address
+    },
+    status: "pending"
+  });
+
+  console.log(`✅ BOOKING_CREATED | ID: ${newBooking.booking_id}`);
+
+  // FIRE-AND-FORGET: External Vendor Notifications
+  const externalVendorUrl = 'https://convenz-vendor-dor.vercel.app/api/external/orders';
+  const webserverVendorUrl = 'https://webserver-vendor.vercel.app/api/external/orders';
+  
+  const payload = {
+    bookingId: newBooking.booking_id,
+    customerId: userId,
+    customerName: customer.name || "Customer",
+    customerPhone: String(customer.phone),
+    service: selectedService,
+    description: jobDescription,
+    location: { latitude: location.latitude, longitude: location.longitude, address: location.address }
+  };
+
+  // Notify External Servers (Non-blocking)
+  axios.post(externalVendorUrl, payload, { timeout: 10000 }).catch(() => {});
+  axios.post(webserverVendorUrl, payload, { headers: { 'x-customer-secret': '7c3a762645e64b89d513a2a2dde29605a9595d368826a762918fbb8e04412824' }, timeout: 10000 }).catch(() => {});
+
+  // Find Internal Vendor
+  const vendorMatch = await findBestVendor(selectedService, location.latitude, location.longitude, 50);
+
+  if (!vendorMatch) {
+    if (customer.fcmToken) {
+      sendNotification(customer.fcmToken, "⚠️ No Vendor Available", `Searching for ${selectedService} vendors...`, { bookingId: String(newBooking.booking_id) }).catch(() => {});
+    }
+    return res.status(201).json({ success: true, message: "Booking created, searching for vendor...", data: newBooking, vendorFound: false });
+  }
+
+  // Update with Vendor
+  newBooking.vendorId = vendorMatch.vendor.vendor_id;
+  newBooking.distance = vendorMatch.distance;
+  await newBooking.save();
+
+  // Notify Vendor (Non-blocking)
+  const vendorBackendUrl = process.env.VENDOR_BACKEND_URL || 'https://vendor-backend-7cn3.onrender.app';
+  axios.post(`${vendorBackendUrl}/vendor/api/new-booking`, { ...payload, vendorId: vendorMatch.vendor.vendor_id }, { timeout: 10000 }).catch(() => {});
+
+  if (vendorMatch.vendor.fcmTokens?.length > 0) {
+    sendNotification(vendorMatch.vendor.fcmTokens[0], "🔔 New Service Request", `New ${selectedService} request near you!`, { type: "NEW_BOOKING", bookingId: String(newBooking.booking_id) }).catch(() => {});
+  }
+
+  // Notify Customer
+  if (customer.fcmToken) {
+    sendNotification(customer.fcmToken, "✅ Booking Processed", `Your ${selectedService} request is being handled by ${vendorMatch.vendor.name}.`, { type: "BOOKING_CONFIRMATION", bookingId: String(newBooking.booking_id) }).catch(() => {});
+  }
+
+  return res.status(201).json({
+    success: true,
+    message: "Booking created and vendor matched",
+    data: newBooking,
+    vendor: { id: vendorMatch.vendor.vendor_id, name: vendorMatch.vendor.name, distance: vendorMatch.distance }
+  });
+});
+
+/* ------------------------------------------------------------
+   📋 GET USER'S BOOKINGS
+------------------------------------------------------------ */
+export const getUserBookings = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const bookings = await Booking.find({ userId }).sort({ createdAt: -1 }).limit(50);
+  return res.status(200).json({ success: true, count: bookings.length, data: bookings });
+});
+
+/* ------------------------------------------------------------
+   🔍 GET SINGLE BOOKING DETAILS
+------------------------------------------------------------ */
+export const getBookingDetails = asyncHandler(async (req, res) => {
+  const booking = await Booking.findOne({ booking_id: req.params.bookingId });
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found");
+  }
+  return res.status(200).json({ success: true, data: booking });
+});
+
+/* ------------------------------------------------------------
+   ❌ CANCEL BOOKING
+------------------------------------------------------------ */
+export const cancelBooking = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const booking = await Booking.findOne({ booking_id: req.params.bookingId });
+
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found");
+  }
+
+  if (booking.userId !== userId) {
+    res.status(403);
+    throw new Error("Unauthorized to cancel this booking");
+  }
+
+  if (["completed", "cancelled"].includes(booking.status)) {
+    res.status(400);
+    throw new Error(`Cannot cancel booking with status: ${booking.status}`);
+  }
+
+  booking.status = "cancelled";
+  await booking.save();
+
+  return res.status(200).json({ success: true, message: "Booking cancelled successfully", data: booking });
+});
+
+/* ------------------------------------------------------------
+   🔄 BOOKING STATUS UPDATE (FROM VENDOR)
+------------------------------------------------------------ */
+export const updateBookingStatus = asyncHandler(async (req, res) => {
+  const { bookingId, status, vendorId, otpStart, rejectionReason } = req.body;
+  const booking = await Booking.findOne({ booking_id: bookingId });
+
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found");
+  }
+
+  booking.status = status;
+  if (status === "accepted" && otpStart) booking.otpStart = otpStart;
+  if (vendorId) booking.vendorId = vendorId;
+  await booking.save();
+
+  // Notify customer
+  const customer = await User.findOne({ user_id: booking.userId });
+  if (customer?.fcmToken) {
+    let title = "Booking Update";
+    let body = `Your booking status is now: ${status}`;
+    if (status === "accepted") {
+      title = "✅ Booking Accepted!";
+      body = `Your ${booking.selectedService} request was accepted. OTP: ${otpStart}`;
+    }
+    sendNotification(customer.fcmToken, title, body, { type: "STATUS_UPDATE", bookingId, status }).catch(() => {});
+  }
+
+  return res.status(200).json({ success: true, message: "Status updated", data: booking });
+});
