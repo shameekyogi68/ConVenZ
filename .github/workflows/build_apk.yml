@@ -1,0 +1,49 @@
+name: Build Frontend APK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ConVenzCusF/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'ConVenzCusF/**'
+
+jobs:
+  build:
+    name: Build Flutter APK
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./ConVenzCusF
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: ConVenzCusF/build/app/outputs/flutter-apk/app-release.apk
