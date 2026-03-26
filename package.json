@@ -4,12 +4,12 @@
   "private": true,
   "description": "Premium Monorepo for ConVenZ Customer and Backend",
   "scripts": {
-    "install:backend": "cd ConVenzCusB/backend && npm install",
-    "start:backend": "cd ConVenzCusB/backend && npm start",
-    "dev:backend": "cd ConVenzCusB/backend && npm run dev",
-    "clean:frontend": "cd ConVenzCusF && flutter clean",
-    "get:frontend": "cd ConVenzCusF && flutter pub get",
-    "build:apk": "cd ConVenzCusF && flutter build apk --release",
+    "install:backend": "cd backend && npm install",
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "clean:frontend": "cd frontend && flutter clean",
+    "get:frontend": "cd frontend && flutter pub get",
+    "build:apk": "cd frontend && flutter build apk --release",
     "setup:all": "npm run install:backend && npm run get:frontend"
   }
 }

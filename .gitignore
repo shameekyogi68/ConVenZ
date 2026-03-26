@@ -10,18 +10,22 @@
 .env.local
 .env.*.local
 
-# Node
+# Backend specifically excluded folders
+backend/node_modules/
+backend/npm-debug.log
+backend/yarn-error.log
+backend/firebase-service-account.json
+
+# Node global
 node_modules/
-npm-debug.log
-yarn-error.log
 
-# Flutter/Dart
-.dart_tool/
-build/
-.flutter-plugins
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
+# Frontend/Flutter explicitly removed folders
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.pub-cache/
+frontend/.pub/
 
-# Firebase
+# Firebase general
 firebase-service-account.json

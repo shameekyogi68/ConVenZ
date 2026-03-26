@@ -2,6 +2,6 @@ services:
   - type: web
     name: convenz-backend
     env: node
-    rootDir: ConVenzCusB/backend
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start

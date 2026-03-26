@@ -5,12 +5,12 @@ on:
     branches:
       - main
     paths:
-      - 'ConVenzCusF/**'
+      - 'frontend/**'
   pull_request:
     branches:
       - main
     paths:
-      - 'ConVenzCusF/**'
+      - 'frontend/**'
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: ./ConVenzCusF
+        working-directory: ./frontend
 
     steps:
       - name: Checkout Code
@@ -46,4 +46,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: ConVenzCusF/build/app/outputs/flutter-apk/app-release.apk
+          path: frontend/build/app/outputs/flutter-apk/app-release.apk
