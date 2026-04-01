@@ -11,6 +11,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import { notFound, errorHandler } from "./src/middlewares/errorMiddleware.js";
+import mongoose from "mongoose";
 
 // Load environment variables
 dotenv.config();
