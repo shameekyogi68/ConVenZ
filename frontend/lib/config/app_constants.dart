@@ -1,18 +1,19 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AppConstants {
-  // API Configuration
-  // Change this to your backend server IP address or domain
-  // For local development: Use your machine's local IP address
-  // For production: Use your server's domain or public IP
-  // For Android emulator: use 10.0.2.2 instead of localhost
-  static const String apiBaseUrl = "https://convenzcusb-backend.onrender.com";
+  // 🌍 Production Ready API Configuration
+  // Centralized URL loading from the .env file you pushed to GitHub
+  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'http://localhost:5005/api');
   
-  // API Endpoints
-  static const String userApiPath = "/api/user";
-  static const String bookingApiPath = "/api/booking";
-  static const String subscriptionApiPath = "/api/subscription";
+  // 🏁 API Sub-Paths (Relative to apiBaseUrl)
+  // Ensure paths match exactly with backend/server.js mount points
+  static const String userApiPath = "/user";
+  static const String bookingApiPath = "/booking";
+  static const String subscriptionApiPath = "/subscription";
   
-  // Full URLs
-  static const String userBaseUrl = "$apiBaseUrl$userApiPath";
-  static const String bookingBaseUrl = "$apiBaseUrl$bookingApiPath";
-  static const String subscriptionBaseUrl = "$apiBaseUrl$subscriptionApiPath";
+  // 🔗 Full Base URLs
+  // Dynamically constructed for production stability
+  static String get userBaseUrl => "$apiBaseUrl$userApiPath";
+  static String get bookingBaseUrl => "$apiBaseUrl$bookingApiPath";
+  static String get subscriptionBaseUrl => "$apiBaseUrl$subscriptionApiPath";
 }

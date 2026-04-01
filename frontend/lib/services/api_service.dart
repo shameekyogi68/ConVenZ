@@ -5,7 +5,7 @@ import '../utils/shared_prefs.dart';
 
 class ApiService {
   // Use centralized configuration from AppConstants
-  static const String baseUrl = AppConstants.userBaseUrl;
+  static String get baseUrl => AppConstants.userBaseUrl;
 
 
   // -----------------------

@@ -7,7 +7,7 @@ import '../config/app_constants.dart';
 
 class SubscriptionService {
   // Use centralized configuration
-  static const baseUrl = AppConstants.subscriptionBaseUrl;
+  static String get baseUrl => AppConstants.subscriptionBaseUrl;
 
   /// Fetch all active plans from the backend
   static Future<List<SubscriptionPlan>> getActivePlans() async {
