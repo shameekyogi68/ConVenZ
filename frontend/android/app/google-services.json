@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "548447367008",
+    "project_id": "convenz-customer-dfce7",
+    "storage_bucket": "convenz-customer-dfce7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548447367008:android:3e8b105716af4b8ad37805",
+        "android_client_info": {
+          "package_name": "com.convenz.vendor_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz9k2odoBRaGTf_UB8H0M4W2xb4NP_8Tg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:548447367008:android:3042c52b71ffd90cd37805",
+        "android_client_info": {
+          "package_name": "com.example.convenz_customer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz9k2odoBRaGTf_UB8H0M4W2xb4NP_8Tg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
