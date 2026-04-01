@@ -4,129 +4,105 @@ import '../utils/shared_prefs.dart';
 import '../models/booking.dart';
 
 class BookingService {
-
-  // ----------------------------------------------------------
-  // 📅 GET USER BOOKINGS
-  // ----------------------------------------------------------
+  // ─────────────────────────────────────────────
+  /// GET all bookings for the logged-in user
+  // ─────────────────────────────────────────────
   static Future<List<Booking>> getUserBookings() async {
     try {
-      String? userId = SharedPrefs.getUserId();
-      if (userId == null) return [];
+      final String? userId = SharedPrefs.getUserId();
+      if (userId == null || userId.isEmpty) return [];
 
-      // Call GET /api/booking/user/:userId
-      final res = await ApiService.get("/booking/user/$userId");
+      // Backend route: GET /api/user/bookings/:userId
+      final res = await ApiService.get("/user/bookings/$userId");
 
-      if (res['success'] == true) {
-        List<dynamic> data = res['data'];
-        return data.map((json) => Booking.fromJson(json)).toList();
-      } else {
-        return [];
+      if (res['success'] == true && res['data'] != null) {
+        final List<dynamic> data = res['data'] as List<dynamic>;
+        return data
+            .map((json) => Booking.fromJson(json as Map<String, dynamic>))
+            .toList();
       }
+      return [];
     } catch (e) {
-      print("❌ Error fetching bookings: $e");
       return [];
     }
   }
 
-  // ----------------------------------------------------------
-  // 📝 CREATE BOOKING (Enhanced with all required fields)
-  // ----------------------------------------------------------
+  // ─────────────────────────────────────────────
+  /// CREATE a new booking
+  // ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> createBooking({
     required String selectedService,
     required String selectedDate,
     required String selectedTime,
     required Map<String, dynamic> userLocation,
-    String? jobDescription,
-    String? vendorId,
-    double? price,
+    String jobDescription = '',
   }) async {
     try {
-      String? userId = SharedPrefs.getUserId();
-      if (userId == null) {
+      final String? userId = SharedPrefs.getUserId();
+      if (userId == null || userId.isEmpty) {
         return {"success": false, "message": "User not logged in"};
       }
 
-      // ✅ FIX: Map Flutter fields to exact backend field names
+      // ✅ Field names exactly match backend Joi validation schema
       final bookingData = {
-        "userId": userId,
         "selectedService": selectedService,
-        "date": selectedDate,                    // Backend expects "date" not "selectedDate"
-        "time": selectedTime,                    // Backend expects "time" not "selectedTime"
-        "location": userLocation,                // Backend expects "location" not "userLocation"
-        "jobDescription": jobDescription ?? "",
+        "date": selectedDate,
+        "time": selectedTime,
+        "location": userLocation,
+        "jobDescription": jobDescription.isEmpty ? selectedService : jobDescription,
       };
 
-      // Add optional fields if provided
-      if (vendorId != null) bookingData["vendorId"] = vendorId;
-      if (price != null) bookingData["price"] = price;
-
-      print("📤 Creating booking with correct field names: $bookingData");
-
-      final res = await ApiService.post("/user/booking/create", bookingData);
-      
-      print("📥 Booking response: $res");
-
-      return res;
+      // Backend route: POST /api/user/booking/create (protected)
+      return await ApiService.post("/user/booking/create", bookingData);
     } catch (e) {
-      print("❌ Error creating booking: $e");
       return {"success": false, "message": "Failed to create booking: $e"};
     }
   }
 
-  // ----------------------------------------------------------
-  // 🔄 GET SINGLE BOOKING BY ID
-  // ----------------------------------------------------------
+  // ─────────────────────────────────────────────
+  /// GET a single booking by its ID
+  // ─────────────────────────────────────────────
   static Future<Booking?> getBookingById(String bookingId) async {
     try {
-      final res = await ApiService.get("/booking/$bookingId");
+      // Backend route: GET /api/user/booking/:bookingId
+      final res = await ApiService.get("/user/booking/$bookingId");
 
       if (res['success'] == true && res['data'] != null) {
-        return Booking.fromJson(res['data']);
+        return Booking.fromJson(res['data'] as Map<String, dynamic>);
       }
       return null;
     } catch (e) {
-      print("❌ Error fetching booking: $e");
       return null;
     }
   }
 
-  // ----------------------------------------------------------
-  // 🔄 POLL BOOKING STATUS (Every 3 seconds)
-  // ----------------------------------------------------------
+  // ─────────────────────────────────────────────
+  /// POLL booking status every 5 seconds until it reaches a terminal state
+  // ─────────────────────────────────────────────
   static Stream<Booking?> pollBookingStatus(String bookingId) async* {
+    const terminalStatuses = {'completed', 'cancelled', 'rejected'};
     while (true) {
       try {
         final booking = await getBookingById(bookingId);
         yield booking;
-        
-        // Stop polling if booking is in terminal state
-        if (booking != null && 
-            (booking.status == 'completed' || 
-             booking.status == 'cancelled' || 
-             booking.status == 'rejected')) {
-          break;
-        }
-        
-        // Wait 3 seconds before next poll
-        await Future.delayed(const Duration(seconds: 3));
-      } catch (e) {
-        print("❌ Polling error: $e");
+        if (booking != null && terminalStatuses.contains(booking.status)) break;
+        await Future.delayed(const Duration(seconds: 5));
+      } catch (_) {
         yield null;
-        await Future.delayed(const Duration(seconds: 3));
+        await Future.delayed(const Duration(seconds: 5));
       }
     }
   }
 
-  // ----------------------------------------------------------
-  // ❌ CANCEL BOOKING
-  // ----------------------------------------------------------
+  // ─────────────────────────────────────────────
+  /// CANCEL a booking by its ID
+  // ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> cancelBooking(String bookingId) async {
     try {
-      final res = await ApiService.post("/booking/$bookingId/cancel", {});
-      return res;
+      // Backend route: POST /api/user/booking/:bookingId/cancel
+      return await ApiService.post("/user/booking/$bookingId/cancel", {});
     } catch (e) {
-      print("❌ Error cancelling booking: $e");
-      return {"success": false, "message": "Failed to cancel booking"};
+      return {"success": false, "message": "Failed to cancel booking: $e"};
     }
   }
 }

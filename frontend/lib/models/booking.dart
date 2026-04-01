@@ -1,77 +1,99 @@
+/// Booking model — maps to the ConVenZ backend bookingModel.js schema
 class Booking {
   final String id;
-  final String vendorId;
-  final String vendorName;
-  final String? vendorPhone;
-  final String serviceId;
-  final String serviceName;
-  final double price;
-  final String status;
+  final int bookingId;
+  final int userId;
+  final int? vendorId;
+  final String selectedService;
+  final String jobDescription;
   final String date;
-  final String? selectedDate;
-  final String? selectedTime;
-  final String? jobDescription;
-  final Map<String, dynamic>? userLocation;
+  final String time;
+  final String status;
+  final Map<String, dynamic>? location;
+  final int? otpStart;
+  final double? distance;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  
+  // Populated vendor data from backend (if available)
+  final Map<String, dynamic>? vendor;
 
-  Booking({
+  // ── UI convenience getters that match existing screens ──
+  String get serviceName    => selectedService;
+  
+  String get vendorName {
+    if (vendor != null && vendor!['name'] != null) {
+      return vendor!['name'] as String;
+    }
+    return vendorId != null ? 'Vendor #$vendorId' : 'Searching...';
+  }
+
+  String? get vendorPhone {
+    if (vendor != null && vendor!['phone'] != null) {
+      return vendor!['phone']?.toString();
+    }
+    return null;
+  }
+
+  String? get selectedDate  => date;
+  String? get selectedTime  => time;
+  Map<String, dynamic>? get userLocation => location;
+  double get price => 0.0; // Subscription-based model
+
+  const Booking({
     required this.id,
-    required this.vendorId,
-    required this.vendorName,
-    this.vendorPhone,
-    required this.serviceId,
-    required this.serviceName,
-    required this.price,
-    required this.status,
+    required this.bookingId,
+    required this.userId,
+    this.vendorId,
+    required this.selectedService,
+    required this.jobDescription,
     required this.date,
-    this.selectedDate,
-    this.selectedTime,
-    this.jobDescription,
-    this.userLocation,
+    required this.time,
+    required this.status,
+    this.location,
+    this.otpStart,
+    this.distance,
     this.createdAt,
     this.updatedAt,
+    this.vendor,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
-    // Handle populated fields safely
-    final vendor = json['vendorId'] ?? {};
-    final service = json['servicesId'] ?? {};
-
+    // Handle both flat and nested 'vendor' object from backend
+    final vendorData = json['vendor'] as Map<String, dynamic>?;
+    
     return Booking(
-      id: json['_id'] ?? '',
-      vendorId: vendor is String ? vendor : (vendor['_id'] ?? ''),
-      vendorName: vendor is Map ? (vendor['name'] ?? 'Unknown Vendor') : 'Unknown Vendor',
-      vendorPhone: vendor is Map ? vendor['phone'] : null,
-      serviceId: service is String ? service : (service['_id'] ?? ''),
-      serviceName: service is Map ? (service['name'] ?? 'General Service') : 'General Service',
-      price: (json['price'] ?? 0).toDouble(),
-      status: json['bookingStatus'] ?? 'pending',
-      date: json['booking_createdAt'] ?? DateTime.now().toString(),
-      selectedDate: json['selectedDate'],
-      selectedTime: json['selectedTime'],
-      jobDescription: json['jobDescription'],
-      userLocation: json['userLocation'],
-      createdAt: json['booking_createdAt'] != null 
-          ? DateTime.tryParse(json['booking_createdAt']) 
-          : null,
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.tryParse(json['updatedAt']) 
-          : null,
+      id: json['_id']?.toString() ?? '',
+      bookingId: (json['booking_id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
+      vendorId: json['vendorId'] != null ? (json['vendorId'] as num?)?.toInt() : null,
+      selectedService: json['selectedService'] as String? ?? 'Service',
+      jobDescription: json['jobDescription'] as String? ?? '',
+      date: json['date'] as String? ?? '',
+      time: json['time'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      location: json['location'] as Map<String, dynamic>?,
+      otpStart: json['otpStart'] != null ? (json['otpStart'] as num).toInt() : null,
+      distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      vendor: vendorData,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'vendorId': vendorId,
-      'servicesId': serviceId,
-      'price': price,
-      'bookingStatus': status,
-      'selectedDate': selectedDate,
-      'selectedTime': selectedTime,
-      'jobDescription': jobDescription,
-      'userLocation': userLocation,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    '_id': id,
+    'booking_id': bookingId,
+    'userId': userId,
+    'vendorId': vendorId,
+    'selectedService': selectedService,
+    'jobDescription': jobDescription,
+    'date': date,
+    'time': time,
+    'status': status,
+    'location': location,
+    'otpStart': otpStart,
+    'distance': distance,
+    'vendor': vendor,
+  };
 }

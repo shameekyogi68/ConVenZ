@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
+import '../../widgets/primary_button.dart';
 
 class BookingOtpScreen extends StatefulWidget {
   final Booking booking;
@@ -18,12 +19,8 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
 
   @override
   void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    for (var controller in _controllers) controller.dispose();
+    for (var node in _focusNodes) node.dispose();
     super.dispose();
   }
 
@@ -40,11 +37,10 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Confirm Service Completion'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: const Text('Start Service'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -52,108 +48,91 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Logo Placeholder/Header
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: AppColors.accentMint.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Center(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    width: 70,
-                    errorBuilder: (context, error, stackTrace) => 
-                      const Icon(Icons.done_all_rounded, size: 50, color: AppColors.accentMint),
-                  ),
+              const SizedBox(height: 40),
+              
+              const Hero(
+                tag: 'otp-icon',
+                child: Icon(
+                  Icons.vpn_key_rounded,
+                  size: 80,
+                  color: AppColors.primaryTeal,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Your gateway to every service',
-                style: TextStyle(
-                  color: AppColors.accentMint,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 60),
+              
+              const SizedBox(height: 32),
               
               const Text(
-                'Confirm Service Completion',
+                'Verify with Professional',
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primaryTeal,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              
+              const SizedBox(height: 16),
+              
               const Text(
-                'Vendor has provided you an OTP for\nverification',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
+                'Please share your service OTP with the professional\nto start the work.',
+                style: TextStyle(fontSize: 15, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
               
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(4, (index) => _buildOtpField(index)),
+              const SizedBox(height: 60),
+
+              // OTP Display (since this is customer app, CUSTOMER holds the OTP)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.primaryTeal.withOpacity(0.2)),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'YOUR SERVICE OTP',
+                      style: TextStyle(
+                        letterSpacing: 4,
+                        color: AppColors.primaryTeal,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.booking.otpStart?.toString() ?? 'xxxx',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 20,
+                        color: AppColors.primaryTeal,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               
-              const SizedBox(height: 100),
+              const SizedBox(height: 80),
               
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate to feedback
-                    context.push('/feedback', extra: widget.booking);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentMint,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Submit',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
+              PrimaryButton(
+                text: 'Done - Work Started',
+                onPressed: () {
+                  // This is a UI-only flow, in reality the backend updates status.
+                  // We'll proceed to feedback to simulate a completion flow.
+                  context.push('/feedback', extra: widget.booking);
+                },
+              ),
+              
+              const SizedBox(height: 20),
+              
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Back'),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOtpField(int index) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.withOpacity(0.5)),
-      ),
-      child: TextField(
-        controller: _controllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        maxLength: 1,
-        onChanged: (value) => _onChanged(value, index),
-        decoration: const InputDecoration(
-          counterText: '',
-          border: InputBorder.none,
         ),
       ),
     );

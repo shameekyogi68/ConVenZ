@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/subscription_card.dart';
 import '../../config/app_colors.dart';
 import '../../models/subscription_plan.dart';
@@ -82,12 +83,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
       
       // Navigate to home screen after success
       Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            '/home',
-            (route) => false,
-          );
-        }
+        if (mounted) context.go('/home');
       });
     } else {
       // Show error message - could be "already has active subscription" or other error
@@ -138,22 +134,50 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             );
           }
 
-          // Error state
+          // Error state — user-friendly, no raw message
           if (snapshot.hasError) {
             return Center(
-              child: Text(
-                "Error loading plans: ${snapshot.error}",
-                style: const TextStyle(color: Colors.red, fontSize: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Could not load plans',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.darkGrey),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('Check your connection and try again.',
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const SizedBox(height: 20),
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      _plansFuture = SubscriptionService.getActivePlans();
+                    }),
+                    icon: const Icon(Icons.refresh, color: AppColors.primaryTeal),
+                    label: const Text('Retry', style: TextStyle(color: AppColors.primaryTeal)),
+                  ),
+                ],
               ),
             );
           }
 
-          // No data state
+          // Empty state
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: Text(
-                "No plans available",
-                style: TextStyle(color: AppColors.primaryTeal, fontSize: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.card_membership, size: 64, color: AppColors.accentMint),
+                  SizedBox(height: 16),
+                  Text(
+                    'No plans available right now.',
+                    style: TextStyle(color: AppColors.darkGrey, fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text('Please check back soon!',
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                ],
               ),
             );
           }

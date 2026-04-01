@@ -39,28 +39,27 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   void _startPolling() {
     _pollingSubscription = BookingService.pollBookingStatus(widget.bookingId).listen(
       (booking) {
-        if (mounted) {
-          setState(() {
-            _booking = booking;
-            _isLoading = false;
-            _errorMessage = booking == null ? "Failed to load booking" : null;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _booking = booking;
+          _isLoading = false;
+          _errorMessage = booking == null ? "We couldn't load your booking details. Please check your connection." : null;
+        });
       },
-      onError: (error) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = "Error: $error";
-          });
-        }
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "It's taking longer than expected. Please try again soon.";
+        });
       },
     );
   }
 
   void _callVendor() async {
-    if (_booking?.vendorPhone != null) {
-      final uri = Uri.parse('tel:${_booking!.vendorPhone}');
+    final phone = _booking?.vendorPhone;
+    if (phone != null && phone.isNotEmpty) {
+      final uri = Uri.parse('tel:$phone');
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
@@ -71,12 +70,13 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Cancel Booking?'),
-        content: const Text('Are you sure you want to cancel this booking?'),
+        content: const Text('Are you sure you want to cancel this booking? This will remove the request completely.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('No'),
+            child: const Text('No, keep it'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -91,23 +91,23 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
 
     if (confirm == true) {
       final result = await BookingService.cancelBooking(widget.bookingId);
-      if (mounted) {
-        if (result['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Booking cancelled successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _startPolling(); // Refresh
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['message'] ?? 'Failed to cancel booking'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+      if (!mounted) return;
+      if (result['success'] == true) {
+        setState(() => _isLoading = true);
+        _startPolling(); 
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Booking cancelled successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Unable to cancel booking at this time.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -118,76 +118,71 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
-          "Track Booking",
-          style: TextStyle(color: Colors.black),
+          "Track Your Service",
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        elevation: 0.5,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal))
           : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() => _isLoading = true);
-                          _startPolling();
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildErrorPlaceholder()
               : _booking == null
                   ? const Center(child: Text('Booking not found'))
                   : _buildTrackingContent(),
     );
   }
 
+  Widget _buildErrorPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.info_outline, size: 64, color: AppColors.primaryTeal),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 16, color: AppColors.darkGrey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 150,
+              child: PrimaryButton(
+                text: 'Retry',
+                onPressed: () {
+                  setState(() => _isLoading = true);
+                  _startPolling();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTrackingContent() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status Card
           _buildStatusCard(),
-          
-          const SizedBox(height: 24),
-          
-          // Progress Timeline
+          const SizedBox(height: 20),
           _buildProgressTimeline(),
-          
-          const SizedBox(height: 24),
-          
-          // Booking Details
-          _buildBookingDetails(),
-          
-          const SizedBox(height: 24),
-          
-          // Vendor Details (if assigned)
-          if (_booking!.status != 'pending' && _booking!.status != 'cancelled')
-            _buildVendorDetails(),
-          
-          const SizedBox(height: 24),
-          
-          // Action Buttons
+          const SizedBox(height: 20),
+          _buildBookingDetailsSection(),
+          if (_booking!.status != 'pending' && _booking!.status != 'cancelled' && _booking!.status != 'rejected') ...[
+            const SizedBox(height: 20),
+            _buildVendorDetailsSection(),
+          ],
+          const SizedBox(height: 32),
           _buildActionButtons(),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -197,59 +192,63 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     Color statusColor;
     IconData statusIcon;
     String statusText;
+    String statusDesc;
 
     switch (_booking!.status.toLowerCase()) {
       case 'pending':
         statusColor = Colors.orange;
-        statusIcon = Icons.hourglass_empty;
-        statusText = 'Searching for vendors...';
+        statusIcon = Icons.search;
+        statusText = 'Locating Vendor';
+        statusDesc = 'We are finding the best-rated vendor for you.';
         break;
       case 'accepted':
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle;
-        statusText = 'Vendor accepted your booking!';
+        statusColor = Colors.blue;
+        statusIcon = Icons.verified;
+        statusText = 'Vendor Assigned';
+        statusDesc = 'A professional has been assigned to your request.';
         break;
       case 'in_progress':
       case 'inprogress':
-        statusColor = Colors.blue;
-        statusIcon = Icons.build;
-        statusText = 'Service in progress';
+        statusColor = AppColors.primaryTeal;
+        statusIcon = Icons.engineering;
+        statusText = 'Service in Progress';
+        statusDesc = 'The work is currently being handled.';
         break;
       case 'completed':
         statusColor = Colors.green;
-        statusIcon = Icons.done_all;
-        statusText = 'Service completed';
+        statusIcon = Icons.check_circle_outline;
+        statusText = 'Success!';
+        statusDesc = 'Your home service is successfully completed.';
         break;
       case 'cancelled':
-        statusColor = Colors.red;
-        statusIcon = Icons.cancel;
-        statusText = 'Booking cancelled';
+        statusColor = Colors.grey;
+        statusIcon = Icons.cancel_outlined;
+        statusText = 'Cancelled';
+        statusDesc = 'This request has been cancelled.';
         break;
       case 'rejected':
         statusColor = Colors.red;
-        statusIcon = Icons.cancel;
-        statusText = 'Booking rejected';
+        statusIcon = Icons.error_outline;
+        statusText = 'Service Unavailable';
+        statusDesc = 'No vendors were available at this time.';
         break;
       default:
-        statusColor = Colors.grey;
-        statusIcon = Icons.info;
+        statusColor = AppColors.darkGrey;
+        statusIcon = Icons.info_outline;
         statusText = _booking!.status;
+        statusDesc = 'Processing your request...';
     }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [statusColor, statusColor.withOpacity(0.7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: statusColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -258,31 +257,30 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: statusColor.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(statusIcon, color: Colors.white, size: 32),
+            child: Icon(statusIcon, color: statusColor, size: 30),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Current Status",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
                 Text(
                   statusText,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: statusColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  statusDesc,
+                  style: const TextStyle(
+                    color: AppColors.darkGrey,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -294,79 +292,71 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   }
 
   Widget _buildProgressTimeline() {
-    final statuses = ['pending', 'accepted', 'in_progress', 'completed'];
-    final currentIndex = statuses.indexOf(_booking!.status.toLowerCase());
+    final status = _booking!.status.toLowerCase();
+    final steps = [
+      {'title': 'Booking Created', 'id': 'pending'},
+      {'title': 'Vendor Assigned', 'id': 'accepted'},
+      {'title': 'In Progress', 'id': 'in_progress'},
+      {'title': 'Completed', 'id': 'completed'},
+    ];
+    
+    int currentIndex = steps.indexWhere((s) => s['id'] == status);
+    if (status == 'inprogress') currentIndex = 2;
+    if (status == 'completed') currentIndex = 3;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Progress",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGrey,
-            ),
-          ),
+          const Text("Timeline", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          _buildTimelineStep('Booking Created', 'pending', 0, currentIndex >= 0),
-          _buildTimelineStep('Vendor Assigned', 'accepted', 1, currentIndex >= 1),
-          _buildTimelineStep('Service Started', 'in_progress', 2, currentIndex >= 2),
-          _buildTimelineStep('Service Completed', 'completed', 3, currentIndex >= 3, isLast: true),
+          for (int i = 0; i < steps.length; i++)
+            _buildTimelineStep(
+              steps[i]['title']!, 
+              i <= currentIndex, 
+              i == steps.length - 1
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineStep(String title, String status, int index, bool isCompleted, {bool isLast = false}) {
+  Widget _buildTimelineStep(String label, bool isDone, bool isLast) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Column(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
-                color: isCompleted ? AppColors.primaryTeal : Colors.grey[300],
+                color: isDone ? AppColors.primaryTeal : Colors.grey[200],
                 shape: BoxShape.circle,
               ),
-              child: isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
+              child: isDone ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
             ),
             if (!isLast)
               Container(
                 width: 2,
-                height: 40,
-                color: isCompleted ? AppColors.primaryTeal : Colors.grey[300],
+                height: 30,
+                color: isDone ? AppColors.primaryTeal : Colors.grey[200],
               ),
           ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: isCompleted ? FontWeight.w600 : FontWeight.normal,
-                color: isCompleted ? AppColors.darkGrey : Colors.grey[500],
-              ),
+        const SizedBox(width: 14),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isDone ? AppColors.primaryTeal : Colors.grey[400],
+              fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ),
@@ -374,128 +364,61 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     );
   }
 
-  Widget _buildBookingDetails() {
+  Widget _buildBookingDetailsSection() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Booking Details",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGrey,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow(Icons.receipt, 'Booking ID', widget.bookingId),
-          const Divider(height: 24),
-          _buildDetailRow(Icons.home_repair_service, 'Service', _booking!.serviceName),
-          const Divider(height: 24),
-          _buildDetailRow(Icons.calendar_today, 'Date', _booking!.selectedDate ?? 'N/A'),
-          const Divider(height: 24),
-          _buildDetailRow(Icons.access_time, 'Time', _booking!.selectedTime ?? 'N/A'),
-          if (_booking!.userLocation != null) ...[
-            const Divider(height: 24),
-            _buildDetailRow(
-              Icons.location_on,
-              'Location',
-              _booking!.userLocation!['address'] ?? 'N/A',
-            ),
-          ],
-          if (_booking!.jobDescription != null && _booking!.jobDescription!.isNotEmpty) ...[
-            const Divider(height: 24),
-            _buildDetailRow(Icons.description, 'Description', _booking!.jobDescription!),
-          ],
+          _buildDetailRow(Icons.receipt_long, "Booking ID", "#${_booking!.bookingId}"),
+          const Divider(height: 30),
+          _buildDetailRow(Icons.handyman, "Service", _booking!.serviceName),
+          const Divider(height: 30),
+          _buildDetailRow(Icons.event, "Date Scheduled", _booking!.date),
+          const Divider(height: 30),
+          _buildDetailRow(Icons.location_on, "Service Area", _booking!.userLocation?['address'] ?? 'N/A'),
+          if (_booking!.otpStart != null) ...[
+            const Divider(height: 30),
+            _buildDetailRow(Icons.vpn_key, "Service OTP", _booking!.otpStart.toString(), isSpaced: true),
+          ]
         ],
       ),
     );
   }
 
-  Widget _buildVendorDetails() {
+  Widget _buildVendorDetailsSection() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Vendor Details",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGrey,
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person,
-                  color: AppColors.primaryTeal,
-                  size: 28,
-                ),
+              const CircleAvatar(
+                backgroundColor: AppColors.primaryTeal,
+                child: Icon(Icons.person, color: Colors.white),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _booking!.vendorName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.darkGrey,
-                      ),
-                    ),
-                    if (_booking!.vendorPhone != null)
-                      Text(
-                        _booking!.vendorPhone!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                    const Text("Assigned Vendor", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(_booking!.vendorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ],
                 ),
               ),
               if (_booking!.vendorPhone != null)
                 IconButton(
                   onPressed: _callVendor,
-                  icon: const Icon(Icons.phone, color: AppColors.primaryTeal),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primaryTeal.withOpacity(0.1),
-                  ),
+                  icon: const Icon(Icons.phone),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.accentMint.withOpacity(0.2), iconColor: AppColors.primaryTeal),
                 ),
             ],
           ),
@@ -505,70 +428,45 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   }
 
   Widget _buildActionButtons() {
-    final canCancel = _booking!.status.toLowerCase() == 'pending' || 
-                      _booking!.status.toLowerCase() == 'accepted';
+    final status = _booking!.status.toLowerCase();
+    final showCancel = status == 'pending' || status == 'accepted';
 
     return Column(
       children: [
-        if (canCancel)
+        if (showCancel) ...[
           OutlinedButton(
             onPressed: _cancelBooking,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56),
-              side: const BorderSide(color: Colors.red),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(100),
-              ),
-            ),
-            child: const Text(
-              'Cancel Booking',
-              style: TextStyle(
-                color: Colors.red,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50), side: const BorderSide(color: Colors.red)),
+            child: const Text("Cancel This Booking", style: TextStyle(color: Colors.red)),
           ),
-        if (canCancel) const SizedBox(height: 12),
+          const SizedBox(height: 16),
+        ],
         PrimaryButton(
-          text: 'Back to Home',
-          onPressed: () {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          },
+          text: "Done / Go Back",
+          onPressed: () => Navigator.pop(context),
         ),
       ],
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(IconData icon, String label, String value, {bool isSpaced = false}) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: AppColors.primaryTeal, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: AppColors.darkGrey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              value, 
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                fontSize: 14,
+                letterSpacing: isSpaced ? 4 : 0
+              )
+            ),
+          ],
         ),
       ],
     );

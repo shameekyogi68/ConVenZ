@@ -1,135 +1,131 @@
 import Plan from "../models/planModel.js";
 import Subscription from "../models/subscriptionModel.js";
 import User from "../models/userModel.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
-// Helper to calculate expiry date
+// ─────────────────────────────────────────────
+// Helper: Calculate subscription expiry date
+// ─────────────────────────────────────────────
 const calculateExpiry = (duration) => {
   const date = new Date();
-  if (duration.includes("month")) {
-    const months = parseInt(duration) || 1;
-    date.setMonth(date.getMonth() + months);
-  } else if (duration.includes("year")) {
-    const years = parseInt(duration) || 1;
-    date.setFullYear(date.getFullYear() + years);
+  const value = parseInt(duration) || 1;
+  if (duration.includes("year")) {
+    date.setFullYear(date.getFullYear() + value);
+  } else if (duration.includes("month")) {
+    date.setMonth(date.getMonth() + value);
   } else if (duration.includes("day")) {
-      const days = parseInt(duration) || 1;
-      date.setDate(date.getDate() + days);
+    date.setDate(date.getDate() + value);
   }
   return date;
 };
 
 /* ------------------------------------------------------------
-   🛠 ADMIN: CREATE PLANS
+   🛠️ ADMIN: CREATE A PLAN
 ------------------------------------------------------------ */
-export const createPlan = async (req, res) => {
-  try {
-    const { name, price, duration, features } = req.body;
-    const plan = await Plan.create({ name, price, duration, features });
-    res.status(201).json({ success: true, message: "Plan created", data: plan });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+export const createPlan = asyncHandler(async (req, res) => {
+  const { name, price, duration, features, planType } = req.body;
+  const plan = await Plan.create({ name, price, duration, features, planType: planType || "customer" });
+  res.status(201).json({ success: true, message: "Plan created", data: plan });
+});
 
 /* ------------------------------------------------------------
-   👤 USER: GET ALL ACTIVE PLANS
+   📋 GET ALL ACTIVE PLANS (supports ?planType=customer filter)
 ------------------------------------------------------------ */
-export const getActivePlans = async (req, res) => {
-  try {
-    const plans = await Plan.find({ active: true });
-    res.status(200).json({ success: true, data: plans });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
+export const getActivePlans = asyncHandler(async (req, res) => {
+  const filter = { active: true };
+  if (req.query.planType) filter.planType = req.query.planType;
+  const plans = await Plan.find(filter).sort({ price: 1 });
+  res.status(200).json({ success: true, count: plans.length, data: plans });
+});
 
 /* ------------------------------------------------------------
-   🎟 USER: PURCHASE SUBSCRIPTION
+   🎟️ PURCHASE SUBSCRIPTION (Secure: userId from JWT token)
 ------------------------------------------------------------ */
-export const purchaseSubscription = async (req, res) => {
-  try {
-    const { userId, planId } = req.body;
+export const purchaseSubscription = asyncHandler(async (req, res) => {
+  // ✅ SECURITY FIX: Use userId from verified JWT token, not from request body
+  const userId = req.user.user_id;
+  const { planId } = req.body;
 
-    // 1. Validate User & Plan
-    const user = await User.findOne({ user_id: userId });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    const plan = await Plan.findById(planId);
-    if (!plan) return res.status(404).json({ success: false, message: "Plan not found" });
-
-    // 2. Check if user already has an ACTIVE subscription
-    const existingActiveSub = await Subscription.findOne({ 
-      userId: userId, 
-      status: "Active",
-      expiryDate: { $gt: new Date() }
-    });
-
-    if (existingActiveSub) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `You already have an active ${existingActiveSub.currentPack} until ${existingActiveSub.expiryDate.toLocaleDateString()}. Please wait for it to expire before selecting another plan.`,
-        data: existingActiveSub 
-      });
-    }
-
-    // 3. If there's an expired subscription, mark it as Expired
-    const expiredSub = await Subscription.findOne({ 
-      userId: userId, 
-      status: "Active",
-      expiryDate: { $lte: new Date() }
-    });
-
-    if (expiredSub) {
-      expiredSub.status = "Expired";
-      await expiredSub.save();
-    }
-
-    // 4. Calculate Expiry
-    const expiryDate = calculateExpiry(plan.duration);
-
-    // 5. Create Subscription Entry
-    const newSub = await Subscription.create({
-      userId: userId,
-      planId: plan._id,
-      currentPack: plan.name,
-      price: plan.price,
-      expiryDate: expiryDate,
-      status: "Active"
-    });
-
-    // 6. Link Subscription to User Profile
-    user.subscription = newSub._id;
-    await user.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Subscription activated successfully",
-      data: newSub
-    });
-
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  if (!planId) {
+    res.status(400);
+    throw new Error("planId is required");
   }
-};
+
+  // 1. Validate Plan exists and is active
+  const plan = await Plan.findById(planId);
+  if (!plan || !plan.active) {
+    res.status(404);
+    throw new Error("Plan not found or is inactive");
+  }
+
+  // 2. Check if user already has an ACTIVE subscription
+  const existingActiveSub = await Subscription.findOne({
+    userId,
+    status: "Active",
+    expiryDate: { $gt: new Date() },
+  });
+
+  if (existingActiveSub) {
+    res.status(400);
+    throw new Error(
+      `You already have an active "${existingActiveSub.currentPack}" plan until ${existingActiveSub.expiryDate.toLocaleDateString("en-IN")}. Please wait for it to expire.`
+    );
+  }
+
+  // 3. Mark any expired subscriptions as Expired (cleanup)
+  await Subscription.updateMany(
+    { userId, status: "Active", expiryDate: { $lte: new Date() } },
+    { $set: { status: "Expired" } }
+  );
+
+  // 4. Calculate expiry date
+  const expiryDate = calculateExpiry(plan.duration);
+
+  // 5. Create new subscription
+  const newSub = await Subscription.create({
+    userId,
+    planId: plan._id,
+    currentPack: plan.name,
+    price: plan.price,
+    expiryDate,
+    status: "Active",
+  });
+
+  // 6. Link subscription reference to user profile
+  await User.findOneAndUpdate({ user_id: userId }, { subscription: newSub._id });
+
+  res.status(201).json({
+    success: true,
+    message: `"${plan.name}" subscription activated successfully!`,
+    data: newSub,
+  });
+});
 
 /* ------------------------------------------------------------
-   👤 GET USER'S CURRENT SUBSCRIPTION
+   👤 GET USER'S CURRENT ACTIVE SUBSCRIPTION
 ------------------------------------------------------------ */
-export const getUserSubscription = async (req, res) => {
-  try {
-    const { userId } = req.params;
+export const getUserSubscription = asyncHandler(async (req, res) => {
+  // Allow fetching by param or from token (for flexibility)
+  const userId = parseInt(req.params.userId) || req.user?.user_id;
 
-    const sub = await Subscription.findOne({ userId, status: "Active" })
-      .sort({ createdAt: -1 })
-      .populate("planId");
-
-    if (!sub) {
-      return res.status(404).json({ success: false, message: "No active subscription found" });
-    }
-
-    res.status(200).json({ success: true, data: sub });
-
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+  if (!userId) {
+    res.status(400);
+    throw new Error("userId is required");
   }
-};
+
+  // Auto-expire any subscriptions that are overdue
+  await Subscription.updateMany(
+    { userId, status: "Active", expiryDate: { $lte: new Date() } },
+    { $set: { status: "Expired" } }
+  );
+
+  const sub = await Subscription.findOne({ userId, status: "Active" })
+    .sort({ createdAt: -1 })
+    .populate("planId", "name price duration features");
+
+  if (!sub) {
+    return res.status(404).json({ success: false, message: "No active subscription found" });
+  }
+
+  res.status(200).json({ success: true, data: sub });
+});

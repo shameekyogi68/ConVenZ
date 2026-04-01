@@ -3,52 +3,80 @@ import 'package:convenz_customer_app/models/booking.dart';
 
 void main() {
   group('Booking Model Tests', () {
-    test('fromJson correctly parses valid JSON', () {
+    test('fromJson correctly parses valid backend JSON', () {
       final json = {
-        '_id': '12345',
-        'bookingStatus': 'Accepted',
-        'booking_createdAt': '2023-10-25T10:00:00Z',
-        'price': 100.0,
-        'vendorId': {
-           '_id': 'v1',
-           'name': 'Test Vendor',
-           'phone': '9876543210'
+        '_id': 'abc123',
+        'booking_id': 1,
+        'userId': 42,
+        'vendorId': 7,
+        'selectedService': 'Cleaning',
+        'jobDescription': 'Clean the living room',
+        'date': '2023-10-25',
+        'time': '10:00 AM',
+        'status': 'accepted',
+        'location': {
+          'type': 'Point',
+          'coordinates': [77.5946, 12.9716],
+          'address': '123 MG Road, Bengaluru',
         },
-        'servicesId': {
-           '_id': 's1',
-           'name': 'Cleaning'
-        }
+        'otpStart': 4321,
+        'distance': 2.5,
+        'createdAt': '2023-10-25T10:00:00Z',
+        'updatedAt': '2023-10-25T11:00:00Z',
       };
 
       final booking = Booking.fromJson(json);
 
-      expect(booking.id, '12345');
-      expect(booking.status, 'Accepted');
-      expect(booking.date, '2023-10-25T10:00:00Z');
-      expect(booking.price, 100.0);
-      expect(booking.vendorName, 'Test Vendor');
-      expect(booking.vendorPhone, '9876543210');
-      expect(booking.serviceName, 'Cleaning');
+      expect(booking.id, 'abc123');
+      expect(booking.bookingId, 1);
+      expect(booking.userId, 42);
+      expect(booking.vendorId, 7);
+      expect(booking.selectedService, 'Cleaning');
+      expect(booking.serviceName, 'Cleaning'); // convenience getter
+      expect(booking.status, 'accepted');
+      expect(booking.otpStart, 4321);
+      expect(booking.distance, 2.5);
     });
 
-    test('toJson creates correctly mapped JSON', () {
-      final booking = Booking(
+    test('fromJson handles missing optional fields gracefully', () {
+      final json = {
+        '_id': 'xyz',
+        'selectedService': 'Plumbing',
+        'jobDescription': 'Fix pipe',
+        'date': '2024-01-10',
+        'time': '2:00 PM',
+        'status': 'pending',
+      };
+
+      final booking = Booking.fromJson(json);
+
+      expect(booking.id, 'xyz');
+      expect(booking.bookingId, 0); // defaults to 0
+      expect(booking.vendorId, null);
+      expect(booking.otpStart, null);
+      expect(booking.price, 0.0);     // convenience getter default
+      expect(booking.vendorPhone, null); // convenience getter default
+    });
+
+    test('toJson serializes correctly', () {
+      const booking = Booking(
         id: '123',
-        status: 'Pending',
-        vendorId: 'vendor1',
-        vendorName: 'Joe',
-        serviceId: 's1',
-        serviceName: 'Plumbing',
-        date: '2023-11-01',
-        price: 50.0,
+        bookingId: 5,
+        userId: 42,
+        selectedService: 'Plumbing',
+        jobDescription: 'Fix the sink',
+        date: '2024-01-10',
+        time: '3:00 PM',
+        status: 'pending',
       );
 
       final json = booking.toJson();
 
-      expect(json['bookingStatus'], 'Pending');
-      expect(json['vendorId'], 'vendor1');
-      expect(json['servicesId'], 's1');
-      expect(json['price'], 50.0);
+      expect(json['_id'], '123');
+      expect(json['booking_id'], 5);
+      expect(json['userId'], 42);
+      expect(json['selectedService'], 'Plumbing');
+      expect(json['status'], 'pending');
     });
   });
 }

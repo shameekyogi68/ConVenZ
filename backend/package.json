@@ -33,6 +33,7 @@
     "mongoose": "^8.19.3",
     "mongoose-sequence": "^6.0.1",
     "morgan": "^1.10.1",
+    "node-cron": "^4.2.1",
     "twilio": "^5.10.5"
   },
   "devDependencies": {

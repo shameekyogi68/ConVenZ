@@ -75,10 +75,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🚀 ELITE DATABASE ARCHITECTURE INDEXES
-userSchema.index({ phone: 1 }); // Faster phone lookup
-userSchema.index({ fcmToken: 1 }); // Faster push token lookup
-userSchema.index({ location: "2dsphere" }); // High-performance Nearby Search
+// 🚀 DATABASE INDEXES
+// Note: phone index is declared inline on the field above (index: true)
+userSchema.index({ fcmToken: 1 });           // Faster push token lookup
+userSchema.index({ location: "2dsphere" });  // High-performance geospatial search
 
 // Auto-increment user_id ONLY for Users
 userSchema.plugin(AutoIncrement, {

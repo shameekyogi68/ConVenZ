@@ -24,4 +24,19 @@ router.post("/send-multiple", sendNotificationToMultipleUsers);
 // Send notification to a topic
 router.post("/send-topic", sendNotificationToTopic);
 
+// Test manual trigger for hourly nudge (Admin or Debug Only)
+router.get("/test-hourly-nudge", async (req, res) => {
+  try {
+    const { triggerHourlyNudge } = await import("../utils/scheduler.js");
+    const count = await triggerHourlyNudge();
+    res.status(202).json({ 
+      success: true, 
+      message: "Manually triggered hourly nudge",
+      usersReached: count
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;

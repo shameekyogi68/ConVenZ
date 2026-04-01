@@ -49,6 +49,6 @@ export const protect = async (req, res, next) => {
  */
 export const generateToken = (userId) => {
   return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: "30d", // Token valid for 30 days
+    expiresIn: process.env.SESSION_EXPIRY || "30d",
   });
 };
