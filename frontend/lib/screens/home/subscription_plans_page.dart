@@ -16,7 +16,6 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
   late Future<List<SubscriptionPlan>> _plansFuture;
   bool _isLoading = false;
   String? _activeMessage; // Message if user already has active subscription
-  Map<String, dynamic>? _activeSubscription; // Store active subscription data
 
   @override
   void initState() {
@@ -50,7 +49,6 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
 
         setState(() {
           _activeMessage = "You have an active $planName until $formattedDate";
-          _activeSubscription = sub;
         });
       }
     } catch (e) {

@@ -47,6 +47,7 @@
 // 📂 FOLDER STRUCTURE (PRODUCTION READY)
 // ============================================
 
+/*
 lib/
 ├── main.dart                              // ✅ App entry, Firebase init
 ├── firebase_options.dart                  // ✅ Auto-generated Firebase config
@@ -97,6 +98,7 @@ lib/
     ├── primary_button.dart               // Reusable button
     ├── text_input.dart                   // Input with radius 100
     └── datetime_picker.dart              // Date/Time selector
+*/
 
 // ============================================
 // 🔑 KEY IMPLEMENTATION DETAILS

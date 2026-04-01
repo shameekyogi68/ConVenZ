@@ -54,6 +54,16 @@ app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/notification", notificationRoutes);
 app.use("/api/external", externalRoutes);
 
+// 🩺 Health Check Route (For Render)
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "UP",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    dbConnected: mongoose.connection.readyState === 1
+  });
+});
+
 // Error Handling Middlewares
 app.use(notFound);
 app.use(errorHandler);
@@ -62,13 +72,38 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5005;
 const HOST = '0.0.0.0'; // Required for Render deployment
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log('\n' + '='.repeat(60));
   console.log('🚀 CONVENZ CUSTOMER BACKEND SERVER');
   console.log('='.repeat(60));
   console.log(`✅ SERVER_STARTED | ${new Date().toISOString()}`);
   console.log(`📍 Port: ${PORT} | Host: ${HOST}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'production'}`);
   console.log(`🔗 Base URL: http://${HOST}:${PORT}`);
   console.log('='.repeat(60) + '\n');
 });
+
+// 🛑 Graceful Shutdown Handling
+const gracefulShutdown = () => {
+  console.log('\n🛑 SIGTERM/SIGINT received. Shutting down gracefully...');
+  server.close(async () => {
+    console.log('📡 HTTP server closed.');
+    try {
+      await mongoose.connection.close(false);
+      console.log('🗄️ MongoDB connection closed.');
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Error during MongoDB closing:', err);
+      process.exit(1);
+    }
+  });
+  
+  // If server hasn't closed in 10s, force close
+  setTimeout(() => {
+    console.error('⚠️ Could not close connections in time, forcing shutdown');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);

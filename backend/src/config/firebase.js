@@ -8,9 +8,18 @@ const initializeFirebase = () => {
   if (firebaseInitialized) return admin;
 
   try {
-    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json";
-    const absolutePath = resolve(serviceAccountPath);
-    const serviceAccount = JSON.parse(readFileSync(absolutePath, "utf8"));
+    let serviceAccount;
+    
+    // Support loading from direct JSON string in Env Var (Good for Render)
+    if (process.env.FIREBASE_CONFIG_JSON) {
+      serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG_JSON);
+    } else {
+      const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json";
+      const absolutePath = resolve(serviceAccountPath);
+      serviceAccount = JSON.parse(readFileSync(absolutePath, "utf8"));
+    }
+
+    if (!serviceAccount) throw new Error("Firebase configuration not found.");
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
@@ -19,7 +28,8 @@ const initializeFirebase = () => {
     firebaseInitialized = true;
     console.log(`✅ FIREBASE_INITIALIZED | Project: ${serviceAccount.project_id} | FCM Ready`);
   } catch (error) {
-    console.error(`❌ FIREBASE_INIT_FAILED | Error: ${error.message} | Path: ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json"}`);
+    const source = process.env.FIREBASE_CONFIG_JSON ? "Env JSON" : (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json");
+    console.error(`❌ FIREBASE_INIT_FAILED | Error: ${error.message} | Source: ${source}`);
   }
 
   return admin;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../config/app_colors.dart';
 import 'subscription_plans_page.dart';
 import '../../services/location_services.dart';

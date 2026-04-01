@@ -108,7 +108,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                booking.date.substring(0, 10), // Show YYYY-MM-DD
+                formattedDate, // Show YYYY-MM-DD
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
               Container(

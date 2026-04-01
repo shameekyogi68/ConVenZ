@@ -64,7 +64,7 @@ class AppTheme {
       ),
 
       // Card styling for premium look
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 4,
         shadowColor: Colors.black12,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

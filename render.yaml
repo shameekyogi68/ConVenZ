@@ -2,6 +2,21 @@ services:
   - type: web
     name: convenz-backend
     env: node
+    plan: free
     rootDir: backend
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 5005
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # Should be set in Render dashboard
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        value: ./firebase-service-account.json
+      - key: FIREBASE_CONFIG_JSON
+        sync: false # Should be set in Render dashboard if file is not committed
+      - key: NODE_VERSION
+        value: 18.0.0
