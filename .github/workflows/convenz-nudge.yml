@@ -1,0 +1,14 @@
+name: ConVenZ Hourly Nudge
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ConVenZ Notifications
+        run: |
+          curl -v -X GET "https://convenz-backend.onrender.com/api/notification/test-hourly-nudge" \
+          -H "User-Agent: GitHubActions-Nudge"
