@@ -24,13 +24,7 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
     super.dispose();
   }
 
-  void _onChanged(String value, int index) {
-    if (value.isNotEmpty && index < 3) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {

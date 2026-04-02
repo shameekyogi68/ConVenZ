@@ -1,3 +1,5 @@
+rootProject.name = "convenz_customer_android"
+
 pluginManagement {
     val flutterSdkPath =
         run {

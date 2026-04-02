@@ -418,7 +418,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                 IconButton(
                   onPressed: _callVendor,
                   icon: const Icon(Icons.phone),
-                  style: IconButton.styleFrom(backgroundColor: AppColors.accentMint.withOpacity(0.2), iconColor: AppColors.primaryTeal),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.accentMint.withOpacity(0.2), foregroundColor: AppColors.primaryTeal),
                 ),
             ],
           ),
