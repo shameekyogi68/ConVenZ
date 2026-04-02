@@ -40,8 +40,18 @@ const MARKETING_MESSAGES = [
 let lastRunAt = null;
 
 const getMessageForHour = () => {
-  const hour = new Date().getHours();
-  return MARKETING_MESSAGES[hour % MARKETING_MESSAGES.length];
+  // Get time in IST (UTC +5:30) regardless of where the server is hosted
+  const now = new Date();
+  let utcHour = now.getUTCHours();
+  let utcMinutes = now.getUTCMinutes();
+  
+  let istHour = utcHour + 5;
+  if (utcMinutes + 30 >= 60) {
+    istHour += 1;
+  }
+  istHour = istHour % 24;
+
+  return MARKETING_MESSAGES[istHour];
 };
 
 export const triggerHourlyNudge = async (isManual = false) => {
@@ -108,10 +118,11 @@ export const triggerHourlyNudge = async (isManual = false) => {
 
 const startHourlyNotifications = () => {
   /**
-   * IMPORTANT: The server's OS time might differ from local time.
-   * We run every hour at minute 00 of the HOUR.
+   * Run every hour exactly at the top of the hour in Indian Standard Time (IST)
    */
-  cron.schedule("0 * * * *", triggerHourlyNudge);
+  cron.schedule("0 * * * *", triggerHourlyNudge, {
+    timezone: "Asia/Kolkata"
+  });
   
   // Also run 1 minute after start to verify it's working (initial boot nudge)
   setTimeout(() => {
