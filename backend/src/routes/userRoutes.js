@@ -54,7 +54,7 @@ router.post("/update-user", protect, validate(userSchemas.updateProfile), checkU
 router.post("/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Protected
 router.post("/user/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Alias
 router.post("/update-fcm-token", protect, updateFcmToken); // Protected
-router.post("/user/update-fcm-token", protect, updateFcmToken); // Alias
+router.post("/fcm/update-token", protect, updateFcmToken); // Clean alias for Flutter
 
 router.get("/profile/:userId", protect, getUserProfile); // Protected
 router.post("/profile/:userId", protect, checkUserBlocked, updateUserProfile); // Protected

@@ -13,6 +13,7 @@ import '../../providers/user_provider.dart';
 import 'widgets/home_header.dart';
 import 'widgets/category_grid.dart';
 import 'widgets/popular_services.dart';
+import '../../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.loadInitialData();
       userProvider.syncLocation();
+      
+      // ✅ Sync FCM token on every launch to prevent notification skips
+      NotificationService.refreshAndSendToken();
     });
 
     _loadUserSubscription();

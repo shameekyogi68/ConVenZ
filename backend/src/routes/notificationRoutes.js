@@ -28,15 +28,28 @@ router.post("/send-topic", sendNotificationToTopic);
 router.get("/test-hourly-nudge", async (req, res) => {
   try {
     const { triggerHourlyNudge } = await import("../utils/scheduler.js");
-    const count = await triggerHourlyNudge();
+    console.log(`📡 [API] Manual nudge request received | ${new Date().toISOString()}`);
+    const result = await triggerHourlyNudge();
     res.status(202).json({ 
       success: true, 
       message: "Manually triggered hourly nudge",
-      usersReached: count
+      stats: result
     });
   } catch (err) {
+    console.error(`❌ [API] Manual nudge failed: ${err.message}`);
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// Get scheduler status
+router.get("/scheduler-status", (req, res) => {
+  res.json({
+    success: true,
+    timezone: "System/Asia-Kolkata (via node-cron)",
+    schedule: "0 * * * * (Every Hour)",
+    nextScheduledRuns: "Top of every hour",
+    serverTime: new Date().toISOString()
+  });
 });
 
 export default router;

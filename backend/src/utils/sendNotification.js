@@ -30,7 +30,7 @@ export const sendNotification = async (token, title, body, data = {}) => {
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "default",
+          channelId: "high_importance_channel",
         },
       },
       apns: {
@@ -96,7 +96,7 @@ export const sendMultipleNotifications = async (tokens, title, body, data = {}) 
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "default",
+          channelId: "high_importance_channel",
         },
       },
       apns: {
