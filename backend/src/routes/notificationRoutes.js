@@ -37,7 +37,7 @@ router.get("/test-hourly-nudge", async (req, res) => {
 
     const { triggerHourlyNudge } = await import("../utils/scheduler.js");
     console.log(`📡 [API] External nudge request received | Source: ${req.get('User-Agent')}`);
-    const result = await triggerHourlyNudge();
+    const result = await triggerHourlyNudge(true); // Pass true to bypass 45-min lock
     
     res.status(202).json({ 
       success: true, 

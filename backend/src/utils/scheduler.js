@@ -37,13 +37,25 @@ const MARKETING_MESSAGES = [
   /* 23:00 */ { title: "✨ Your Home, Reimagined", body: "Book a professional refresh for your living space tomorrow. 🏡" },
 ];
 
+let lastRunAt = null;
+
 const getMessageForHour = () => {
   const hour = new Date().getHours();
   return MARKETING_MESSAGES[hour % MARKETING_MESSAGES.length];
 };
 
-export const triggerHourlyNudge = async () => {
-  const startTime = Date.now();
+export const triggerHourlyNudge = async (isManual = false) => {
+  const now = Date.now();
+  
+  // 🛡️ Prevent rapid-fire notifications (e.g. from frequent server restarts)
+  // Ensure at least 45 minutes pass between marketing nudges
+  if (!isManual && lastRunAt && (now - lastRunAt) < 45 * 60 * 1000) {
+    const minutesSince = Math.floor((now - lastRunAt) / 60000);
+    console.log(`🕒 [SCHEDULER] Skipping nudge. Last one sent just ${minutesSince} mins ago.`);
+    return { skipped: true, reason: "RECENT_NUDGE" };
+  }
+
+  const startTime = now;
   const currentHour = new Date().getHours();
   console.log(`\n🕒 [SCHEDULER] Running for Hour ${currentHour}:00 | ${new Date().toISOString()}`);
 
@@ -82,6 +94,9 @@ export const triggerHourlyNudge = async () => {
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`✅ [SCHEDULER] Success: ${totalSent} | Failure: ${totalFailure} | Time: ${elapsed}s`);
+    
+    // ✅ LOCK: Do not send another nudge for 45 minutes
+    lastRunAt = Date.now();
     
     return { sent: totalSent, failure: totalFailure, elapsed };
 

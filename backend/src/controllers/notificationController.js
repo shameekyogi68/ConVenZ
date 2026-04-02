@@ -26,13 +26,12 @@ export const updateFcmToken = async (req, res) => {
       });
     }
 
-    // Check if token is already used by another user (prevent duplicates)
-    const existingUser = await User.findOne({ fcmToken: fcmToken, user_id: { $ne: userId } });
-    if (existingUser) {
-      console.log(`🔄 TOKEN_MOVED | ${new Date().toISOString()} | From: ${existingUser.user_id} | To: ${userId}`);
-      existingUser.fcmToken = null;
-      await existingUser.save();
-    }
+    // 🛡️ PREVENT DUPLICATES: Clear this token from any other users who might have it
+    // This happens if a user logs into a different account on the same phone
+    await User.updateMany(
+      { fcmToken: fcmToken, user_id: { $ne: userId } },
+      { $set: { fcmToken: "" } }
+    );
 
     const isNew = !user.fcmToken;
     user.fcmToken = fcmToken;
