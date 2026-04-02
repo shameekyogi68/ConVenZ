@@ -9,7 +9,7 @@ import '../../../widgets/text_input.dart';
 import '../../../services/booking_service.dart';
 import '../../../services/location_services.dart';
 import '../../../utils/blocking_helper.dart';
-import 'vendor_search_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
   final String address;
@@ -102,15 +102,13 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           // Get booking ID from response
           String bookingId = result['data']?['_id'] ?? result['bookingId'] ?? '';
 
-          // Navigate directly to vendor search screen
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VendorSearchScreen(
-                bookingId: bookingId,
-                serviceName: widget.selectedService ?? 'General Service',
-              ),
-            ),
+          // Navigate directly to vendor search screen using GoRouter
+          context.go(
+            '/vendorSearch',
+            extra: {
+              'bookingId': bookingId,
+              'serviceName': widget.selectedService ?? 'General Service',
+            },
           );
         } else if (result['blocked'] != true) {
           // Only show error if not blocked (blocked case handled above)

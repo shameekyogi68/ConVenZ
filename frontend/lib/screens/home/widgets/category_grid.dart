@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../config/app_colors.dart';
 import '../booking/map_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class CategoryGrid extends StatelessWidget {
   const CategoryGrid({super.key});
@@ -19,16 +20,17 @@ class CategoryGrid extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Categories", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text("Categories", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+            .animate().fade().slideX(begin: -0.1, end: 0, duration: 400.ms),
         const SizedBox(height: 10),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            crossAxisSpacing: 15,
-            mainAxisSpacing: 15,
-            childAspectRatio: 1.1,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.05,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
@@ -45,32 +47,43 @@ class CategoryGrid extends StatelessWidget {
                   ),
                 );
               },
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5)
+                    BoxShadow(color: AppColors.primaryTeal.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4)),
+                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
                   ],
+                  border: Border.all(color: Colors.grey.shade100),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(categories[index]['icon'] as IconData, 
-                      color: AppColors.primaryTeal, 
-                      size: 30),
-                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryTeal.withOpacity(isMoreCard ? 0.05 : 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(categories[index]['icon'] as IconData, 
+                        color: isMoreCard ? Colors.grey.shade600 : AppColors.primaryTeal, 
+                        size: 28),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       categories[index]['name'] as String, 
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isMoreCard ? Colors.grey.shade700 : Colors.black87,
                       ),
                     )
                   ],
                 ),
               ),
-            );
+            ).animate().fade(delay: (index * 50).ms).scale(delay: (index * 50).ms, duration: 300.ms, curve: Curves.easeOutBack);
           },
         ),
       ],

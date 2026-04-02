@@ -4,11 +4,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../utils/shared_prefs.dart';
 import 'api_service.dart';
+import '../../firebase_options.dart';
+import '../core/router/app_router.dart';
 
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   // Check notification type
   String? type = message.data['type'];
@@ -151,7 +155,16 @@ class NotificationService {
   static void _onNotificationTapped(NotificationResponse response) {
     // Handle navigation based on payload
     if (response.payload != null) {
-      // Add navigation logic here if needed
+      if (response.payload!.startsWith('vendor_assigned') || 
+          response.payload!.startsWith('booking_update') ||
+          response.payload == 'otp' || 
+          response.payload == 'BOOKING_STATUS_UPDATE') {
+        try {
+          AppRouter.router.go('/home');
+        } catch (e) {
+          print('Notification navigation error: $e');
+        }
+      }
     }
   }
 
@@ -346,22 +359,16 @@ class NotificationService {
     String? type = message.data['type'];
     
     // Navigate based on type
-    switch (type) {
-      case 'otp':
-        // Navigation to OTP screen if needed
-        break;
-      case 'welcome':
-        // Navigation to home or welcome screen
-        break;
-      case 'profile_update':
-        // Navigation to profile screen
-        break;
-      case 'location_update':
-        // Navigation to location screen
-        break;
-      default:
-        // Default navigation
-        break;
+    if (type == 'VENDOR_ASSIGNED' || 
+        type == 'vendor_assigned' || 
+        type == 'BOOKING_STATUS_UPDATE' || 
+        type == 'booking_status_update' || 
+        type == 'otp') {
+      try {
+        AppRouter.router.go('/home');
+      } catch (e) {
+        print('Message click navigation error: $e');
+      }
     }
   }
 
@@ -379,8 +386,9 @@ class NotificationService {
       }
 
       final response = await ApiService.post('/user/update-fcm-token', {
-        'userId': int.parse(userId),
+        'userId': userId,
         'fcmToken': token,
+        'userType': 'customer',
       });
       
       if (response['success'] == true) {

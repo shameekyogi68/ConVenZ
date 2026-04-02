@@ -5,6 +5,7 @@ import '../../../models/booking.dart';
 import '../../../services/booking_service.dart';
 import '../../../widgets/primary_button.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 class BookingTrackingScreen extends StatefulWidget {
   final String bookingId;
@@ -438,6 +439,13 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
             onPressed: _cancelBooking,
             style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50), side: const BorderSide(color: Colors.red)),
             child: const Text("Cancel This Booking", style: TextStyle(color: Colors.red)),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (status == 'completed') ...[
+          PrimaryButton(
+            text: "Leave Feedback",
+            onPressed: () => context.push('/feedback', extra: _booking),
           ),
           const SizedBox(height: 16),
         ],

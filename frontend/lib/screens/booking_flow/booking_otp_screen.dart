@@ -111,11 +111,9 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
               const SizedBox(height: 80),
               
               PrimaryButton(
-                text: 'Done - Work Started',
+                text: 'Back to Dashboard',
                 onPressed: () {
-                  // This is a UI-only flow, in reality the backend updates status.
-                  // We'll proceed to feedback to simulate a completion flow.
-                  context.push('/feedback', extra: widget.booking);
+                  context.go('/home');
                 },
               ),
               

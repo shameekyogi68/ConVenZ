@@ -4,6 +4,9 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
 import mongoose from "mongoose";
 
 // ✅ Load env FIRST before anything else
@@ -25,6 +28,12 @@ connectDB();
 startHourlyNotifications();
 
 const app = express();
+
+// ─────────────────────────────────────────────
+// ☁️ Render Load Balancer / Proxy Support
+// ─────────────────────────────────────────────
+// Trust the first proxy to ensure `express-rate-limit` uses real client IPs
+app.set("trust proxy", 1);
 
 // ─────────────────────────────────────────────
 // 🛡️ Security Middleware
@@ -61,6 +70,15 @@ app.use(cors({
 // ─────────────────────────────────────────────
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Data Sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp());
+
+// Response Compression (Gzip) for faster mobile loading
+app.use(compression());
 
 // ─────────────────────────────────────────────
 // 🛣️ API Routes

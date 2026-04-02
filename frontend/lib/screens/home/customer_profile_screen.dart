@@ -7,6 +7,7 @@ import '../../widgets/secondary_button.dart';
 import '../../services/profile_service.dart';
 import '../../models/profile_model.dart';
 import '../../utils/shared_prefs.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   final PageController controller;
@@ -146,17 +147,27 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 50),
-                    Image.asset('assets/images/avatar.png', width: 130),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 20, spreadRadius: 5),
+                        ],
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: ClipOval(child: Image.asset('assets/images/avatar.png', width: 130)),
+                    ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
                     const SizedBox(height: 20),
 
                     const Text(
                       'Customer Profile',
                       style: TextStyle(
                         fontSize: 26,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.primaryTeal,
+                        letterSpacing: -0.5,
                       ),
-                    ),
+                    ).animate().fade(delay: 200.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
 
                     const SizedBox(height: 40),
 
@@ -240,12 +251,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                               : PrimaryButton(text: 'Save Changes', onPressed: _saveProfile),
                           const SizedBox(height: 16),
                         ],
-                      ),
+                      ).animate().fade().slideY(begin: 0.2, end: 0, duration: 300.ms),
 
-                    SecondaryButton(text: 'Log Out', onPressed: _logout),
+                    SecondaryButton(text: 'Log Out', onPressed: _logout)
+                        .animate().fade(delay: 500.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
 
                     const SizedBox(height: 40),
-                  ],
+                  ].animate(interval: 50.ms).fade(duration: 400.ms),
                 ),
               ),
             ),

@@ -14,6 +14,7 @@ import 'widgets/home_header.dart';
 import 'widgets/category_grid.dart';
 import 'widgets/popular_services.dart';
 import '../../services/notification_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -165,11 +166,14 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF1F465A), Color(0xFF3A7A94)],
+            colors: [Color(0xFF1B3D50), Color(0xFF2C6E80)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          ],
         ),
         child: const SizedBox(
           height: 120,
@@ -201,13 +205,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF1F465A), Color(0xFF3A7A94)],
+            colors: [Color(0xFF1B3D50), Color(0xFF2C6E80)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -276,13 +280,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF1F465A), Color(0xFF3A7A94)],
+            colors: [Color(0xFF1B3D50), Color(0xFF2C6E80)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -350,13 +354,13 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primaryTeal, Color(0xFF4D9F98)],
+          colors: [AppColors.primaryTeal, Color(0xFF3DD5A1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+          BoxShadow(color: AppColors.accentMint.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -423,25 +427,28 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 25),
 
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4))
+                    color: AppColors.primaryTeal.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8))
               ],
+              border: Border.all(color: Colors.white, width: 2),
             ),
             child: const TextField(
               decoration: InputDecoration(
                 hintText: "Search for services...",
                 border: InputBorder.none,
-                icon: Icon(Icons.search, color: AppColors.darkGrey),
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                icon: Icon(Icons.search, color: AppColors.primaryTeal),
               ),
             ),
-          ),
+          ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms, curve: Curves.easeOutCubic),
 
           const SizedBox(height: 25),
           _buildBannerCarousel(),

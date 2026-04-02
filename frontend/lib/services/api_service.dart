@@ -28,7 +28,13 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      return {"success": false, "message": "Network error: $e"};
+      String errorStr = e.toString();
+      if (errorStr.contains('SocketException')) {
+        return {"success": false, "message": "Looks like you are offline. Please check your internet connection."};
+      } else if (errorStr.contains('TimeoutException')) {
+        return {"success": false, "message": "The server is taking too long to respond. Please try again later."};
+      }
+      return {"success": false, "message": "A connection error occurred. Please try again."};
     }
   }
 
@@ -52,7 +58,13 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
-      return {"success": false, "message": "Network error: $e"};
+      String errorStr = e.toString();
+      if (errorStr.contains('SocketException')) {
+        return {"success": false, "message": "Looks like you are offline. Please check your internet connection."};
+      } else if (errorStr.contains('TimeoutException')) {
+        return {"success": false, "message": "The server is taking too long to respond. Please try again later."};
+      }
+      return {"success": false, "message": "A connection error occurred. Please try again."};
     }
   }
 
@@ -75,6 +87,12 @@ class ApiService {
               body['blockReason'] ?? 'Your account has been blocked by admin.',
           "message": body['message'] ?? 'Account blocked',
           "statusCode": 403,
+        };
+      } else if (response.statusCode == 401) {
+        return {
+          "success": false,
+          "message": body['message'] ?? "Your session has expired. Please log in again.",
+          "statusCode": 401,
         };
       } else {
         return {

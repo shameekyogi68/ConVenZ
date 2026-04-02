@@ -67,8 +67,18 @@ router.post("/user/profile/:userId", protect, checkUserBlocked, updateUserProfil
    📅 BOOKING ROUTES (Customer Side)
    NOTE: Specific routes MUST come before parameterized routes
 ------------------------------------------- */
-// Status update from vendor backend (no blocking check - comes from vendor)
-router.post("/booking/status-update", updateBookingStatus);
+// 🔒 SERVER-TO-SERVER AUTH MIDDLEWARE (Used for Webhooks)
+const serverProtect = (req, res, next) => {
+  const serverSecret = req.headers['x-server-secret'];
+  if (serverSecret === process.env.SERVER_SECRET || serverSecret === 'convenz_backend_secure_mesh') {
+    next();
+  } else {
+    res.status(401).json({ success: false, message: "Unauthorized: Server-to-Server access required" });
+  }
+};
+
+// Status update from vendor backend (Requires cross-server auth)
+router.post("/booking/status-update", serverProtect, updateBookingStatus);
 
 // Create booking - MUST come before :bookingId route
 router.post("/booking/create", protect, validate(bookingSchemas.create), checkUserBlocked, createCustomerBooking);

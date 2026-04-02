@@ -27,5 +27,9 @@ const subscriptionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// 🚀 ELITE DATABASE ARCHITECTURE INDEXES
+subscriptionSchema.index({ userId: 1, status: 1 }); // Ultra-fast lookup for active user subscriptions
+subscriptionSchema.index({ expiryDate: 1 }, { expireAfterSeconds: 0 }); // Clean up expired subs if needed, or fast expiry sorting
+
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
 export default Subscription;

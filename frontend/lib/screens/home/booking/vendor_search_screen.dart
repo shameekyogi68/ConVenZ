@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../config/app_colors.dart';
 import '../../../widgets/secondary_button.dart';
-import 'vendor_not_found_screen.dart';
-import 'vendor_found_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class VendorSearchScreen extends StatefulWidget {
   final String bookingId;
@@ -54,15 +53,10 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
     Future.delayed(const Duration(seconds: 60), () {
       if (mounted && !_hasNavigated) {
         _hasNavigated = true;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VendorNotFoundScreen(
-              bookingId: widget.bookingId,
-              serviceName: widget.serviceName,
-            ),
-          ),
-        );
+        context.go('/vendorNotFound', extra: {
+          'bookingId': widget.bookingId,
+          'serviceName': widget.serviceName,
+        });
       }
     });
   }
@@ -78,32 +72,22 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
       if (data['type'] == 'VENDOR_FOUND') {
         _hasNavigated = true;
         // Vendor accepted! Navigate to VendorFoundScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VendorFoundScreen(
-              bookingId: widget.bookingId,
-              vendorName: data['vendorName'] ?? 'Unknown Vendor',
-              vendorPhone: data['vendorPhone'] ?? '',
-              vendorAddress: data['vendorAddress'] ?? 'Address not provided',
-              service: widget.serviceName,
-              date: data['date'] ?? '',
-              time: data['time'] ?? '',
-            ),
-          ),
-        );
+        context.go('/vendorFound', extra: {
+          'bookingId': widget.bookingId,
+          'vendorName': data['vendorName'] ?? 'Unknown Vendor',
+          'vendorPhone': data['vendorPhone'] ?? '',
+          'vendorAddress': data['vendorAddress'] ?? 'Address not provided',
+          'service': widget.serviceName,
+          'date': data['date'] ?? '',
+          'time': data['time'] ?? '',
+        });
       } else if (data['type'] == 'VENDOR_NOT_FOUND') {
         _hasNavigated = true;
         // No vendor after 1 minute - Navigate to VendorNotFoundScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VendorNotFoundScreen(
-              bookingId: widget.bookingId,
-              serviceName: widget.serviceName,
-            ),
-          ),
-        );
+        context.go('/vendorNotFound', extra: {
+          'bookingId': widget.bookingId,
+          'serviceName': widget.serviceName,
+        });
       }
     });
   }
@@ -234,7 +218,7 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: SecondaryButton(
                 text: "Cancel Search",
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.go('/home'),
               ),
             ),
           ],
