@@ -118,12 +118,17 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: const Text(
-          "Track Your Service",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          'Track Your Service',
+          style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryTeal),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal))
@@ -310,6 +315,9 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,6 +379,9 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
       ),
       child: Column(
         children: [
@@ -396,6 +407,9 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
       ),
       child: Column(
         children: [
@@ -435,23 +449,41 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     return Column(
       children: [
         if (showCancel) ...[
-          OutlinedButton(
-            onPressed: _cancelBooking,
-            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50), side: const BorderSide(color: Colors.red)),
-            child: const Text("Cancel This Booking", style: TextStyle(color: Colors.red)),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: _cancelBooking,
+              icon: const Icon(Icons.cancel_outlined, size: 18),
+              label: const Text('Cancel This Booking', style: TextStyle(fontWeight: FontWeight.w600)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.dangerRed,
+                side: BorderSide(color: AppColors.dangerRed.withOpacity(0.6)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
         if (status == 'completed') ...[
           PrimaryButton(
-            text: "Leave Feedback",
+            text: 'Leave Feedback',
             onPressed: () => context.push('/feedback', extra: _booking),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
-        PrimaryButton(
-          text: "Done / Go Back",
-          onPressed: () => Navigator.pop(context),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryTeal,
+              side: BorderSide(color: AppColors.primaryTeal.withOpacity(0.4)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+            ),
+            child: const Text('Done / Go Back', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
         ),
       ],
     );

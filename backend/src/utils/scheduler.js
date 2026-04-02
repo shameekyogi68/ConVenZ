@@ -124,12 +124,6 @@ const startHourlyNotifications = () => {
     timezone: "Asia/Kolkata"
   });
   
-  // Also run 1 minute after start to verify it's working (initial boot nudge)
-  setTimeout(() => {
-    console.log("🚀 [SCHEDULER] Initializing early nudge verification...");
-    triggerHourlyNudge().catch(e => console.error("❌ Pre-heat nudge failed:", e));
-  }, 30000); // Wait 30s after boot
-
   console.log("🚀 [SCHEDULER] Automated Hourly Marketing initialized. (0 * * * *)");
 };
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../services/blocking_service.dart';
-import '../screens/blocked_user_screen.dart';
 
 class BlockingHelper {
   
@@ -15,15 +15,8 @@ class BlockingHelper {
     if (BlockingService.isUserBlocked(response)) {
       final blockReason = BlockingService.getBlockReason(response);
       
-      // Navigate to blocked screen and clear all previous routes
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => BlockedUserScreen(
-            blockReason: blockReason,
-          ),
-        ),
-        (route) => false,
-      );
+      // Navigate to blocked screen using GoRouter
+      context.go('/blocked', extra: blockReason);
     }
   }
 
@@ -43,15 +36,7 @@ class BlockingHelper {
                              'Your account has been blocked by admin.';
           
           if (context.mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (context) => BlockedUserScreen(
-                  blockReason: blockReason,
-                  blockedAt: response['data']['blockedAt'],
-                ),
-              ),
-              (route) => false,
-            );
+            context.go('/blocked', extra: blockReason);
           }
           
           return true; // User is blocked

@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
 import '../../utils/shared_prefs.dart';
+import '../router/app_router.dart';
 
 class ApiClient {
   static final Dio _dio = Dio(
@@ -33,7 +34,7 @@ class ApiClient {
           // Centralized error handling: If 401 (Token Expired), clear data and logout
           if (e.response?.statusCode == 401) {
             await SharedPrefs.clear();
-            // Optional: Add a stream or notification here to trigger the UI to show login
+            AppRouter.router.go('/welcomeCarousel');
             print('🚨 TOKEN_EXPIRED: User logged out automatically.');
           }
           return handler.next(e);

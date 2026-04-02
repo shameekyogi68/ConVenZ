@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../config/app_colors.dart';
 import '../../../widgets/primary_button.dart';
@@ -7,7 +8,7 @@ import '../../../widgets/secondary_button.dart';
 class VendorNotFoundScreen extends StatelessWidget {
   final String bookingId;
   final String serviceName;
-  
+
   const VendorNotFoundScreen({
     super.key,
     required this.bookingId,
@@ -18,132 +19,150 @@ class VendorNotFoundScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text('Search Result', style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // 🚫 Vendor Not Found Avatar with red cross
-                Stack(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Illustration
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.shade100, width: 2),
+                ),
+                child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Large dimmed avatar image
-                    ClipOval(
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.5),
-                          BlendMode.darken,
-                        ),
-                        child: Image.asset(
-                          "assets/images/avatar.png",
-                          width: 180,
-                          height: 180,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 180,
-                              height: 180,
-                              color: Colors.grey[300],
-                              child: Icon(
-                                Icons.person,
-                                size: 80,
-                                color: Colors.grey[600],
-                              ),
-                            );
-                          },
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: ColorFiltered(
+                          colorFilter: ColorFilter.mode(Colors.grey.shade400, BlendMode.saturation),
+                          child: Image.asset(
+                            'assets/images/avatar.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, size: 52, color: Colors.grey.shade400),
+                          ),
                         ),
                       ),
                     ),
-
-                    // ❌ Red cross badge overlay
                     Positioned(
-                      bottom: 18,
-                      right: 18,
+                      bottom: 8,
+                      right: 8,
                       child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
                       ),
                     ),
                   ],
                 ),
+              ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
 
-                const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
-                // Title
-                const Text(
-                  "Vendor Not Found",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryTeal,
-                  ),
-                  textAlign: TextAlign.center,
+              const Text(
+                'No Vendor Found',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                textAlign: TextAlign.center,
+              ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
+
+              const SizedBox(height: 12),
+
+              Text(
+                "We couldn't find an available $serviceName vendor\nin your area right now.",
+                style: TextStyle(fontSize: 15, color: Colors.grey.shade600, height: 1.6),
+                textAlign: TextAlign.center,
+              ).animate().fade(delay: 150.ms),
+
+              const SizedBox(height: 12),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-
-                const SizedBox(height: 12),
-
-                // Message
-                Text(
-                  "We couldn't locate any $serviceName vendor\nmatching your request. Try expanding your search.",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.darkGrey,
-                  ),
-                  textAlign: TextAlign.center,
+                child: Text(
+                  'Booking ID: #${bookingId.length > 8 ? bookingId.substring(bookingId.length - 8) : bookingId}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryTeal, letterSpacing: 1),
                 ),
+              ).animate().fade(delay: 180.ms),
 
-                const SizedBox(height: 8),
+              const SizedBox(height: 48),
 
-                // Booking ID
-                Text(
-                  "Booking ID: #${bookingId.substring(bookingId.length > 8 ? bookingId.length - 8 : 0)}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+              // Suggestions card
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primaryTeal.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 6)),
+                  ],
                 ),
-
-                const SizedBox(height: 40),
-
-                // Expand Search Button
-                PrimaryButton(
-                  text: "Expand Search",
-                  onPressed: () {
-                    // TODO: Implement expand search functionality
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Expanding search area...'),
-                        backgroundColor: AppColors.primaryTeal,
-                      ),
-                    );
-                  },
+                child: Column(
+                  children: [
+                    _buildSuggestion(Icons.schedule_rounded, 'Try at a different time of day'),
+                    const SizedBox(height: 12),
+                    _buildSuggestion(Icons.location_searching_rounded, 'Expand your search area'),
+                    const SizedBox(height: 12),
+                    _buildSuggestion(Icons.support_agent_rounded, 'Contact support for help'),
+                  ],
                 ),
+              ).animate().fade(delay: 220.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
-                const SizedBox(height: 16),
+              const SizedBox(height: 36),
 
-                // Back to Home Button
-                SecondaryButton(
-                  text: "Back to Home",
-                  onPressed: () {
-                    context.go('/home');
-                  },
-                ),
-              ],
-            ),
+              PrimaryButton(
+                text: 'Try Again',
+                onPressed: () => context.go('/home'),
+              ).animate().fade(delay: 300.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 12),
+
+              SecondaryButton(
+                text: 'Back to Home',
+                onPressed: () => context.go('/home'),
+              ).animate().fade(delay: 350.ms),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSuggestion(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primaryTeal.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primaryTeal, size: 18),
+        ),
+        const SizedBox(width: 14),
+        Text(text, style: const TextStyle(fontSize: 13, color: AppColors.darkGrey, fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }

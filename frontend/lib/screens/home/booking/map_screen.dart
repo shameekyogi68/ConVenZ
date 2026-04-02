@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:convenz_customer_app/screens/home/booking/service_details_screen.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -49,7 +49,18 @@ class _MapScreenState extends State<MapScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.deniedForever) return null;
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Location permissions are permanently denied. Please search manually or enable them in settings."),
+            backgroundColor: AppColors.dangerRed,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return null;
+    }
 
     try {
       Position pos = await Geolocator.getCurrentPosition(
@@ -254,14 +265,29 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   /// 📍 UI Extracted — unchanged
-  Widget _buildSearchBar() => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: const [
-        BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))
-      ],
-    ),
+  Widget _buildSearchBar() => Row(
+    children: [
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryTeal, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))
+            ],
+          ),
     child: TextField(
       controller: _searchController,
       textInputAction: TextInputAction.search,
@@ -282,6 +308,9 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     ),
+        ),
+      ),
+    ],
   );
 
   Widget _buildBottomAddressPanel() => Align(
@@ -293,9 +322,9 @@ class _MapScreenState extends State<MapScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: Colors.black26, blurRadius: 8, spreadRadius: 1),
+            BoxShadow(color: AppColors.primaryTeal.withOpacity(0.08), blurRadius: 24, offset: const Offset(0, -4)),
           ],
         ),
         child: Column(
@@ -322,10 +351,12 @@ class _MapScreenState extends State<MapScreen> {
               onChanged: (value) => _selectedAddress = value,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.grey.shade100,
+                fillColor: AppColors.primaryTeal.withOpacity(0.04),
                 hintText: "Fetching address...",
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -342,16 +373,14 @@ class _MapScreenState extends State<MapScreen> {
                     );
                     return;
                   }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ServiceDetailsScreen(
-                        address: _selectedAddress,
-                        selectedService: widget.selectedService,
-                        latitude: _center.latitude,
-                        longitude: _center.longitude,
-                      ),
-                    ),
+                  context.push(
+                    '/serviceDetails',
+                    extra: {
+                      'address': _selectedAddress,
+                      'selectedService': widget.selectedService,
+                      'latitude': _center.latitude,
+                      'longitude': _center.longitude,
+                    },
                   );
                 },
               ),

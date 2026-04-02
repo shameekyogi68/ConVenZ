@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../config/app_colors.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -26,7 +27,13 @@ class PopularServicesList extends StatelessWidget {
             clipBehavior: Clip.none,
             itemCount: popularServices.length,
             itemBuilder: (context, index) {
-              return Container(
+              return GestureDetector(
+                onTap: () {
+                  context.push('/map', extra: {
+                    'selectedService': popularServices[index]['name'],
+                  });
+                },
+                child: Container(
                 width: 110,
                 margin: const EdgeInsets.only(right: 16),
                 decoration: BoxDecoration(
@@ -36,7 +43,7 @@ class PopularServicesList extends StatelessWidget {
                     BoxShadow(color: AppColors.primaryTeal.withOpacity(0.08), blurRadius: 15, offset: const Offset(0, 8)),
                     BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5, offset: const Offset(0, 2)),
                   ],
-                  border: Border.all(color: Colors.white, width: 2), // Gives a sleeker edge
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -61,6 +68,7 @@ class PopularServicesList extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
               ).animate().fade(delay: (300 + (index * 100)).ms).slideY(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
             },
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../widgets/primary_button.dart';
 import 'package:geolocator/geolocator.dart';
@@ -48,7 +49,9 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
 
     // 2. Get Location & Update Server
     try {
-      Position? position = await LocationService.determinePosition();
+      // Added a timeout to prevent hanging if location request takes too long
+      Position? position = await LocationService.determinePosition()
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
 
       if (position != null) {
         final apiResponse = await AuthService.updateUserLocation(
@@ -70,8 +73,8 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
     setState(() { _isLoading = false; });
 
     if (mounted) {
-      // This removes all previous routes (splash, setup, etc.) so "Back" exits the app
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      // Using context.go from GoRouter to clear stack and navigate to /home
+      context.go('/home');
     }
   }
 

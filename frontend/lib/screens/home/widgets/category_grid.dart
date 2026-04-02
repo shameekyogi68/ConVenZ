@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../config/app_colors.dart';
-import '../booking/map_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CategoryGrid extends StatelessWidget {
@@ -38,13 +38,9 @@ class CategoryGrid extends StatelessWidget {
             
             return InkWell(
               onTap: isMoreCard ? null : () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MapScreen(
-                      selectedService: categories[index]['name'],
-                    ),
-                  ),
+                context.push(
+                  '/map',
+                  extra: {'selectedService': categories[index]['name']},
                 );
               },
               borderRadius: BorderRadius.circular(16),

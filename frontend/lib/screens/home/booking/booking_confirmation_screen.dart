@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../config/app_colors.dart';
 import '../../../widgets/primary_button.dart';
-import 'vendor_searching_screen.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
   final String bookingId;
@@ -27,207 +27,128 @@ class BookingConfirmationScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Booking Confirmed"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
+        title: const Text('Booking Confirmed', style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.bold)),
+        centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      
-                      // Success Icon
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryTeal.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.check_circle,
-                          color: AppColors.primaryTeal,
-                          size: 80,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      const Text(
-                        "Booking Confirmed!",
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkGrey,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 12),
-                      
-                      Text(
-                        "Your booking has been created successfully",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      Text(
-                        "Booking ID: $bookingId",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // Booking Details Card
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Booking Details",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkGrey,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            
-                            _buildDetailRow(
-                              Icons.home_repair_service,
-                              "Service",
-                              serviceName,
-                            ),
-                            const SizedBox(height: 16),
-                            
-                            _buildDetailRow(
-                              Icons.calendar_today,
-                              "Date",
-                              selectedDate,
-                            ),
-                            const SizedBox(height: 16),
-                            
-                            _buildDetailRow(
-                              Icons.access_time,
-                              "Time",
-                              selectedTime,
-                            ),
-                            const SizedBox(height: 16),
-                            
-                            _buildDetailRow(
-                              Icons.location_on,
-                              "Location",
-                              address,
-                            ),
-                            
-                            if (jobDescription != null && jobDescription!.isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              _buildDetailRow(
-                                Icons.description,
-                                "Description",
-                                jobDescription!,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Info Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentMint.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.accentMint.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: AppColors.primaryTeal,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                "We're searching for available vendors near you. You'll be notified once a vendor accepts your booking.",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              const SizedBox(height: 12),
+
+              // Success icon
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: AppColors.accentMint.withOpacity(0.3), blurRadius: 28, offset: const Offset(0, 10)),
+                  ],
                 ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Track Booking Button
-              PrimaryButton(
-                text: "Track Booking",
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => VendorSearchingScreen(
-                        bookingId: bookingId,
-                        serviceName: serviceName,
+                child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 60),
+              ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+
+              const SizedBox(height: 20),
+
+              const Text(
+                'Booking Confirmed!',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+              ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
+
+              const SizedBox(height: 8),
+
+              Text(
+                'Your booking has been created successfully',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ).animate().fade(delay: 150.ms),
+
+              const SizedBox(height: 8),
+
+              // Booking ID pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'ID: ${bookingId.length > 8 ? bookingId.substring(bookingId.length - 8) : bookingId}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primaryTeal, letterSpacing: 1),
+                ),
+              ).animate().fade(delay: 180.ms),
+
+              const SizedBox(height: 28),
+
+              // Details card
+              _buildCard([
+                _buildRow(Icons.home_repair_service_rounded, 'Service', serviceName),
+                _buildDivider(),
+                _buildRow(Icons.calendar_today_rounded, 'Date', selectedDate),
+                _buildDivider(),
+                _buildRow(Icons.access_time_rounded, 'Time', selectedTime),
+                _buildDivider(),
+                _buildRow(Icons.location_on_rounded, 'Location', address),
+                if (jobDescription != null && jobDescription!.isNotEmpty) ...[
+                  _buildDivider(),
+                  _buildRow(Icons.description_rounded, 'Description', jobDescription!),
+                ],
+              ]).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
+
+              const SizedBox(height: 20),
+
+              // Info banner
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.accentMint.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.accentMint.withOpacity(0.25)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, color: AppColors.accentMint, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "We're finding an available vendor near you. You'll get a notification once accepted.",
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
                       ),
                     ),
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Back to Home Button
-              TextButton(
-                onPressed: () {
-                  context.go('/home');
-                },
-                child: const Text(
-                  "Back to Home",
-                  style: TextStyle(
-                    color: AppColors.primaryTeal,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  ],
                 ),
+              ).animate().fade(delay: 280.ms),
+
+              const SizedBox(height: 28),
+
+              PrimaryButton(
+                text: 'Track Booking',
+                onPressed: () {
+                  context.pushReplacement('/vendorSearching', extra: {
+                    'bookingId': bookingId,
+                    'serviceName': serviceName,
+                  });
+                },
+              ).animate().fade(delay: 320.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 12),
+
+              TextButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('Back to Home', style: TextStyle(color: AppColors.primaryTeal, fontSize: 15, fontWeight: FontWeight.w600)),
               ),
+
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -235,37 +156,48 @@ class BookingConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: AppColors.primaryTeal, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: AppColors.darkGrey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+  Widget _buildCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Column(children: children),
     );
   }
+
+  Widget _buildRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryTeal.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primaryTeal, size: 18),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 3),
+                Text(value, style: const TextStyle(fontSize: 14, color: AppColors.darkGrey, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() => Divider(height: 1, indent: 20, endIndent: 20, color: Colors.grey.shade100);
 }

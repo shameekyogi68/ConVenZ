@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../config/app_colors.dart';
 import '../../../widgets/secondary_button.dart';
+import '../../../services/booking_service.dart';
 import 'package:go_router/go_router.dart';
 
 class VendorSearchScreen extends StatefulWidget {
@@ -218,7 +219,10 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: SecondaryButton(
                 text: "Cancel Search",
-                onPressed: () => context.go('/home'),
+                onPressed: () {
+                  BookingService.cancelBooking(widget.bookingId);
+                  context.go('/home');
+                },
               ),
             ),
           ],

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/app_constants.dart';
 import '../utils/shared_prefs.dart';
+import '../core/router/app_router.dart';
 
 class ApiService {
   static String get baseUrl => AppConstants.userBaseUrl;
@@ -89,6 +90,10 @@ class ApiService {
           "statusCode": 403,
         };
       } else if (response.statusCode == 401) {
+        // Handle Session Expired forcefully
+        SharedPrefs.clear().then((_) {
+          AppRouter.router.go('/welcomeCarousel');
+        });
         return {
           "success": false,
           "message": body['message'] ?? "Your session has expired. Please log in again.",

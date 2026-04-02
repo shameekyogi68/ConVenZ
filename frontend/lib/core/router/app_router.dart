@@ -16,6 +16,7 @@ import '../../screens/home/booking/vendor_found_screen.dart';
 import '../../screens/home/booking/vendor_not_found_screen.dart';
 import '../../screens/home/booking/service_details_screen.dart';
 import '../../screens/home/booking/map_screen.dart';
+import '../../screens/blocked_user_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -33,6 +34,13 @@ class AppRouter {
       GoRoute(
         path: '/userSetupCarousel',
         builder: (context, state) => const UserSetupCarousel(),
+      ),
+      GoRoute(
+        path: '/blocked',
+        builder: (context, state) {
+          final reason = state.extra as String?;
+          return BlockedUserScreen(reason: reason);
+        },
       ),
 
       // ── Main App ──

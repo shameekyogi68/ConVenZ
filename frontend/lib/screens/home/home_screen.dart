@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import 'subscription_plans_page.dart';
 import '../../services/location_services.dart';
@@ -7,7 +8,6 @@ import '../../utils/shared_prefs.dart';
 import '../../services/subscription_service.dart';
 import '../../utils/blocking_helper.dart';
 import 'customer_profile_screen.dart';
-import 'booking/map_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import 'widgets/home_header.dart';
@@ -269,10 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // If user has NO active subscription, show upgrade prompt
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SubscriptionPlansPage()),
-        );
+        setState(() => _selectedIndex = 2);
       },
       child: Container(
         width: double.infinity,
@@ -388,14 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 32,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MapScreen(
-                            selectedService: 'Cleaning',
-                          ),
-                        ),
-                      );
+                      context.push('/map', extra: {'selectedService': 'Cleaning'});
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
