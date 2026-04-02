@@ -1,4 +1,5 @@
 import admin from "../config/firebase.js";
+import User from "../models/userModel.js";
 
 /**
  * Send push notification to a single device
@@ -116,16 +117,39 @@ export const sendMultipleNotifications = async (tokens, title, body, data = {}) 
     if (response.failureCount > 0) {
       console.log(`⚠️  Failed to send to ${response.failureCount} devices`);
       
-      // Log details about failed tokens
+      const tokensToRemove = [];
+
+      // Log details about failed tokens and prepare for cleanup
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
-          console.error(`   ❌ Token ${idx + 1}: ${resp.error?.code} - ${resp.error?.message}`);
-          if (resp.error?.code === 'messaging/registration-token-not-registered' ||
-              resp.error?.code === 'messaging/invalid-registration-token') {
-            console.error(`      🚫 Token ${tokens[idx].substring(0, 20)}... is invalid/expired`);
+          const errorCode = resp.error?.code;
+          const errorMsg = resp.error?.message;
+          const failedToken = tokens[idx];
+
+          console.error(`   ❌ Token ${idx + 1}: ${errorCode} - ${errorMsg}`);
+          
+          if (errorCode === 'messaging/registration-token-not-registered' ||
+              errorCode === 'messaging/invalid-registration-token' ||
+              errorMsg.includes('Requested entity was not found')) {
+            
+            console.error(`      🚫 Token ...${failedToken.substring(failedToken.length - 10)} is invalid -> Queueing for removal`);
+            tokensToRemove.push(failedToken);
           }
         }
       });
+
+      // 🔥 AUTO-CLEANUP: Remove invalid tokens from database
+      if (tokensToRemove.length > 0) {
+        try {
+          const removeResult = await User.updateMany(
+            { fcmToken: { $in: tokensToRemove } },
+            { $set: { fcmToken: "" } }
+          );
+          console.log(`🧹 [SELF-HEALING] Removed ${removeResult.modifiedCount} invalid tokens from database.`);
+        } catch (cleanupError) {
+          console.error("❌ [SELF-HEALING] Failed to cleanup invalid tokens:", cleanupError.message);
+        }
+      }
     }
 
     return response;
