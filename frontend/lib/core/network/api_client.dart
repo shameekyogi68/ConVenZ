@@ -5,7 +5,7 @@ import '../../utils/shared_prefs.dart';
 class ApiClient {
   static final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: dotenv.get('API_BASE_URL', fallback: 'http://localhost:3000/api'),
+      baseUrl: dotenv.get('API_BASE_URL', fallback: 'https://convenz-backend.onrender.com/api'),
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
       headers: {

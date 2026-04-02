@@ -2,8 +2,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
   // 🌍 Production Ready API Configuration
-  // Centralized URL loading from the .env file you pushed to GitHub
-  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'http://localhost:5005/api');
+  // Centralized URL, forcefully defaulting to the rendering backend for production build
+  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'https://convenz-backend.onrender.com/api');
   
   // 🏁 API Sub-Paths (Relative to apiBaseUrl)
   // Ensure paths match exactly with backend/server.js mount points
