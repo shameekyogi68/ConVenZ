@@ -19,6 +19,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Background handler is already initialized in notification_service.dart via its imports
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   await SharedPrefs.init();
