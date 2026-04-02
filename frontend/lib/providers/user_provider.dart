@@ -24,11 +24,22 @@ class UserProvider with ChangeNotifier {
           String dbAddress = userData['address'] ?? userData['location']?['address'] ?? "Location not set";
           if (dbAddress.isNotEmpty) {
             _currentAddress = dbAddress;
+          } else {
+            _currentAddress = "Location not set";
           }
+        } else {
+          _currentAddress = "Location not set";
         }
+      } else {
+        _currentAddress = "Address not found";
       }
     } catch (e) {
       _currentAddress = "Error loading address";
+    }
+
+    // Force UI refresh after failure or success
+    if (_currentAddress == "Loading address...") {
+      _currentAddress = "Location not determined";
     }
 
     _isLoading = false;

@@ -45,6 +45,12 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
   Future<void> _fetchProfile() async {
     setState(() => isLoading = true);
+    
+    // Fallback: Populate from SharedPrefs first so UI is never fully empty while loading
+    nameController.text = SharedPrefs.getUserName() ?? SharedPrefs.getPhone() ?? 'User';
+    phoneController.text = SharedPrefs.getPhone() ?? '';
+    addressController.text = 'Fetching address...';
+
     try {
       final response = await ProfileService.getProfile();
       if (!mounted) return;
@@ -53,16 +59,14 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         final p = ProfileModel.fromJson(response['data'] as Map<String, dynamic>);
         setState(() {
           profile = p;
-          nameController.text = p.name;
-          phoneController.text = p.phone;
-          addressController.text = p.address;
+          nameController.text = p.name.isNotEmpty ? p.name : nameController.text;
+          phoneController.text = p.phone.isNotEmpty ? p.phone : phoneController.text;
+          addressController.text = p.address.isNotEmpty && p.address != 'No address set' ? p.address : addressController.text;
         });
       } else {
-        // ✅ No raw error shown — silent fail, show empty state
         setState(() => profile = null);
       }
     } catch (_) {
-      // ✅ Network error — show empty state, not raw exception
       if (mounted) setState(() => profile = null);
     } finally {
       if (mounted) setState(() => isLoading = false);

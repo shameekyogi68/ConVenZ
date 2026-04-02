@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../config/app_colors.dart';
+import '../../widgets/secondary_button.dart';
 import '../../models/booking.dart';
 import '../../services/booking_service.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'booking/booking_tracking_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -264,26 +266,59 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.calendar_month_outlined, size: 80, color: Colors.grey[300]),
-              const SizedBox(height: 16),
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withOpacity(0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryTeal.withOpacity(0.35),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.edit_calendar_rounded, size: 40, color: Colors.white),
+                  ),
+                ),
+              ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                  .scaleXY(begin: 0.95, end: 1.02, duration: 2500.ms, curve: Curves.easeInOut),
+                  
+              const SizedBox(height: 32),
+              
               const Text(
                 'No Bookings Yet',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.darkGrey,
+                  color: AppColors.primaryTeal,
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Your scheduled services will appear here.',
-                style: TextStyle(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Pull down to refresh.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
+              ).animate().fade(delay: 200.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
+              
+              const SizedBox(height: 12),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Text(
+                  'Your scheduled services will appear here. Pull down to refresh.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
+                ),
+              ).animate().fade(delay: 300.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
             ],
           ),
         ),

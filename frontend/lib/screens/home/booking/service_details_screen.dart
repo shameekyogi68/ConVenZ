@@ -105,7 +105,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
         if (result['success'] == true) {
           final String bookingId = result['data']?['_id'] ?? result['bookingId'] ?? '';
-          context.go('/vendorSearch', extra: {
+          context.go('/vendorSearching', extra: {
             'bookingId': bookingId,
             'serviceName': widget.selectedService ?? 'General Service',
           });

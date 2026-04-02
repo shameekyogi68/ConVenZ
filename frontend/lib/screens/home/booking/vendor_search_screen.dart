@@ -1,15 +1,15 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:async';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../config/app_colors.dart';
 import '../../../widgets/secondary_button.dart';
 import '../../../services/booking_service.dart';
-import 'package:go_router/go_router.dart';
 
 class VendorSearchScreen extends StatefulWidget {
   final String bookingId;
   final String serviceName;
-  
+
   const VendorSearchScreen({
     super.key,
     required this.bookingId,
@@ -21,70 +21,33 @@ class VendorSearchScreen extends StatefulWidget {
 }
 
 class _VendorSearchScreenState extends State<VendorSearchScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  double progress = 0.0;
-  Timer? _progressTimer;
-  bool _hasNavigated = false;
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _rotateController;
+  Timer? _timeoutTimer;
+  int _secondsElapsed = 0;
+  Timer? _countTimer;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
+    )..repeat(reverse: true);
+
+    _rotateController = AnimationController(
       duration: const Duration(seconds: 3),
+      vsync: this,
     )..repeat();
 
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _countTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) setState(() => _secondsElapsed++);
+    });
+
+    _timeoutTimer = Timer(const Duration(seconds: 60), () {
       if (mounted) {
-        setState(() {
-          progress += 0.0016; // Progress over 60 seconds
-          if (progress >= 1.0) {
-            timer.cancel();
-          }
-        });
-      }
-    });
-
-    // Listen for Firebase notifications
-    _listenForVendorResponse();
-
-    // Navigate to vendor not found after 1 minute (60 seconds)
-    Future.delayed(const Duration(seconds: 60), () {
-      if (mounted && !_hasNavigated) {
-        _hasNavigated = true;
-        context.go('/vendorNotFound', extra: {
-          'bookingId': widget.bookingId,
-          'serviceName': widget.serviceName,
-        });
-      }
-    });
-  }
-
-  void _listenForVendorResponse() {
-    // Listen for notifications while on this screen
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      if (!mounted || _hasNavigated) return;
-      
-      final data = message.data;
-      print('🔔 Notification received: ${data['type']}');
-      
-      if (data['type'] == 'VENDOR_FOUND') {
-        _hasNavigated = true;
-        // Vendor accepted! Navigate to VendorFoundScreen
-        context.go('/vendorFound', extra: {
-          'bookingId': widget.bookingId,
-          'vendorName': data['vendorName'] ?? 'Unknown Vendor',
-          'vendorPhone': data['vendorPhone'] ?? '',
-          'vendorAddress': data['vendorAddress'] ?? 'Address not provided',
-          'service': widget.serviceName,
-          'date': data['date'] ?? '',
-          'time': data['time'] ?? '',
-        });
-      } else if (data['type'] == 'VENDOR_NOT_FOUND') {
-        _hasNavigated = true;
-        // No vendor after 1 minute - Navigate to VendorNotFoundScreen
         context.go('/vendorNotFound', extra: {
           'bookingId': widget.bookingId,
           'serviceName': widget.serviceName,
@@ -95,9 +58,16 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
-    _progressTimer?.cancel();
+    _pulseController.dispose();
+    _rotateController.dispose();
+    _timeoutTimer?.cancel();
+    _countTimer?.cancel();
     super.dispose();
+  }
+
+  String get _elapsedLabel {
+    if (_secondsElapsed < 60) return '${_secondsElapsed}s';
+    return '${_secondsElapsed ~/ 60}m ${_secondsElapsed % 60}s';
   }
 
   @override
@@ -105,127 +75,192 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 🌊 Waves animation with avatar
-            SizedBox(
-              width: 380,
-              height: 380,
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (_, child) {
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ── Animated radar graphic ──
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (_, __) {
                   return Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Animated waves
-                      ...List.generate(3, (i) {
-                        final value = (_controller.value + i * 0.33) % 1;
-                        return Container(
-                          width: 200 + (value * 280),
-                          height: 200 + (value * 280),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.primaryTeal.withOpacity(
-                              (1 - value * 1.4).clamp(0.0, 0.25),
+                      // Pulse rings
+                      for (int i = 0; i < 3; i++)
+                        Transform.scale(
+                          scale: 0.5 + (_pulseController.value * 0.5) + (i * 0.18),
+                          child: Container(
+                            width: 200,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.primaryTeal.withOpacity(
+                                (1 - _pulseController.value - i * 0.25).clamp(0.0, 0.12),
+                              ),
                             ),
                           ),
-                        );
-                      }),
-
-                      // 📷 Center Avatar
+                        ),
+                      // Center avatar
                       Container(
-                        width: 140,
-                        height: 140,
-                        decoration: const BoxDecoration(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryTeal.withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: ClipOval(
                           child: Image.asset(
-                            "assets/images/avatar.png",
+                            'assets/images/avatar.png',
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: AppColors.primaryTeal.withOpacity(0.1),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: AppColors.primaryTeal,
-                                ),
-                              );
-                            },
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.person_rounded, size: 48, color: Colors.white),
                           ),
                         ),
                       ),
                     ],
                   );
                 },
-              ),
-            ),
+              ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 48),
 
-            const Text(
-              "Searching for Vendor...",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primaryTeal,
-              ),
-            ),
+              const Text(
+                'Searching for Vendor...',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                textAlign: TextAlign.center,
+              ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
-            Text(
-              "Looking for ${widget.serviceName} vendor near you",
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.darkGrey,
-              ),
-              textAlign: TextAlign.center,
-            ),
+              Text(
+                'Finding the best ${widget.serviceName} vendor near you',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ).animate().fade(delay: 150.ms),
 
-            const SizedBox(height: 8),
+              const SizedBox(height: 20),
 
-            Text(
-              "Booking ID: #${widget.bookingId.substring(widget.bookingId.length > 8 ? widget.bookingId.length - 8 : 0)}",
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
+              // Booking ID + elapsed time
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryTeal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'ID: ${widget.bookingId.length > 6 ? widget.bookingId.substring(widget.bookingId.length - 6) : widget.bookingId}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryTeal),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentMint.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 13, color: AppColors.accentMint),
+                        const SizedBox(width: 4),
+                        Text(
+                          _elapsedLabel,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accentMint),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ).animate().fade(delay: 200.ms),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
-            // Progress bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 18,
-                  backgroundColor: AppColors.primaryTeal.withOpacity(0.15),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.primaryTeal),
+              // Progress bar
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primaryTeal.withOpacity(0.1),
                 ),
-              ),
-            ),
+                child: LinearProgressIndicator(
+                  value: (_secondsElapsed / 60.0).clamp(0.0, 1.0),
+                  minHeight: 8,
+                  backgroundColor: Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentMint),
+                ),
+              ).animate().fade(delay: 250.ms),
 
-            const SizedBox(height: 40),
+              const SizedBox(height: 8),
 
-            // Cancel button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: SecondaryButton(
-                text: "Cancel Search",
-                onPressed: () {
-                  BookingService.cancelBooking(widget.bookingId);
-                  context.go('/home');
-                },
+              Text(
+                '${(60 - _secondsElapsed).clamp(0, 60)}s remaining',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 40),
+
+              // Info card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primaryTeal.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_active_rounded, color: AppColors.accentMint, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        "Keep the app open. You'll be notified instantly when a vendor accepts.",
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fade(delay: 300.ms),
+
+              const SizedBox(height: 28),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    BookingService.cancelBooking(widget.bookingId);
+                    context.go('/home');
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  label: const Text('Cancel Search', style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryTeal,
+                    side: BorderSide(color: AppColors.primaryTeal.withOpacity(0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                  ),
+                ),
+              ).animate().fade(delay: 350.ms),
+            ],
+          ),
         ),
       ),
     );

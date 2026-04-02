@@ -5,6 +5,7 @@ import '../../config/app_colors.dart';
 import '../../models/subscription_plan.dart';
 import '../../services/subscription_service.dart';
 import '../../utils/shared_prefs.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class SubscriptionPlansPage extends StatefulWidget {
   const SubscriptionPlansPage({super.key});
@@ -164,19 +165,63 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
 
           // Empty state
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.card_membership, size: 64, color: AppColors.accentMint),
-                  SizedBox(height: 16),
-                  Text(
-                    'No plans available right now.',
-                    style: TextStyle(color: AppColors.darkGrey, fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text('Please check back soon!',
-                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryTeal.withOpacity(0.06),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryTeal.withOpacity(0.35),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.workspace_premium_rounded, size: 44, color: Colors.white),
+                      ),
+                    ),
+                  ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                      .scaleXY(begin: 0.95, end: 1.02, duration: 2500.ms, curve: Curves.easeInOut),
+                  
+                  const SizedBox(height: 32),
+                  
+                  const Text(
+                    'No Plans Available',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryTeal,
+                    ),
+                  ).animate().fade(delay: 200.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
+                  
+                  const SizedBox(height: 12),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      'Please check back soon!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
+                    ),
+                  ).animate().fade(delay: 300.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
                 ],
               ),
             );
