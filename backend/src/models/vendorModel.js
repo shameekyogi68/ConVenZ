@@ -13,26 +13,34 @@ const vendorSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    name: String,
-    email: String,
-    
+    name: { type: String, trim: true, maxlength: 100 },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 254,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email address"],
+    },
+
     // 🛠️ Services offered by vendor
     selectedServices: [
       {
         type: String,
         required: true,
+        trim: true,
       }
     ],
 
     // 📍 GeoJSON Location
     location: {
-      type: { type: String, default: "Point" },
+      type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
 
     // 🆕 Address
     address: {
       type: String,
+      trim: true,
       default: "",
     },
 
@@ -71,11 +79,13 @@ const vendorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🚀 ELITE DATABASE ARCHITECTURE INDEXES
-vendorSchema.index({ selectedServices: 1, location: "2dsphere" }); // THE MOST IMPORTANT INDEX for your matching service
-vendorSchema.index({ vendor_id: 1 }); // Fast vendor ID search
-vendorSchema.index({ rating: -1 }); // Performance for "Top Rated" sorting
-vendorSchema.index({ location: "2dsphere" }); // Basic Nearby Search
+// 🚀 DATABASE INDEXES
+// Compound index covers both service filtering AND geospatial lookup — the core matching query.
+// The standalone { location: "2dsphere" } index is intentionally omitted: MongoDB already
+// uses the compound index for geo-only queries, and a duplicate 2dsphere index wastes space.
+vendorSchema.index({ selectedServices: 1, location: "2dsphere" });
+vendorSchema.index({ vendor_id: 1 });
+vendorSchema.index({ rating: -1 });
 
 // Auto-increment vendor_id
 vendorSchema.plugin(AutoIncrement, {

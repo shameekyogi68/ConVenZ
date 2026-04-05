@@ -13,18 +13,19 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    name: String,
+    name: { type: String, trim: true, maxlength: 100 },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
 
     // 📍 GeoJSON Location
     location: {
-      type: { type: String, default: "Point" },
+      type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
     },
 
     // 🆕 Address (Reverse Geocoded)
     address: {
       type: String,
+      trim: true,
       default: "",
     },
 
@@ -52,6 +53,8 @@ const userSchema = new mongoose.Schema(
     // 📝 Block Reason (Optional)
     blockReason: {
       type: String,
+      trim: true,
+      maxlength: 500,
       default: null,
     },
 
@@ -61,15 +64,16 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
-    // 🔑 OTP Storage (Scale-Proof)
+    // 🔑 OTP Storage — stored as HMAC-SHA256 hash, never plaintext
     otp: {
-      type: Number,
+      type: String,
       default: null,
-      index: true // Faster lookup for OTP verification
+      select: false,
     },
     otpExpiry: {
       type: Date,
       default: null,
+      select: false,
     },
   },
   { timestamps: true }

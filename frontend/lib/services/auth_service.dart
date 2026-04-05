@@ -49,11 +49,9 @@ class AuthService {
   }
 
   /// Update user profile details (name, gender)
-  /// ✅ FIX: Correct endpoint is /update-user (mounted under /api/user/)
   static Future<Map<String, dynamic>> updateUserDetails(
-      String phone, String name, String gender) async {
+      String _, String name, String gender) async {
     final res = await ApiService.post("/update-user", {
-      "phone": phone,
       "name": name,
       "gender": gender,
     });
@@ -78,7 +76,6 @@ class AuthService {
         await AddressFormatter.getCleanAddress(latitude, longitude);
 
     return ApiService.post("/user/update-location", {
-      "userId": userId,
       "latitude": latitude,
       "longitude": longitude,
       "address": cleanAddress,

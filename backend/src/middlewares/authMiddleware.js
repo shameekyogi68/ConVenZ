@@ -1,8 +1,12 @@
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
-// JWT Secret Key - ideally in .env
-const JWT_SECRET = process.env.JWT_SECRET || "convenz_super_secret_key_123!";
+// JWT Secret Key - must be set in environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("❌ FATAL: JWT_SECRET environment variable is not set. Server cannot start securely.");
+  process.exit(1);
+}
 
 /**
  * Middleware to protect routes using JWT
@@ -21,8 +25,8 @@ export const protect = async (req, res, next) => {
       // Decode and verify token
       const decoded = jwt.verify(token, JWT_SECRET);
 
-      // Find user by decoded ID, minus the sensitive data
-      req.user = await User.findOne({ user_id: decoded.userId }).select("-otp -otpExpiry");
+      // otp and otpExpiry have select:false in the schema — excluded automatically
+      req.user = await User.findOne({ user_id: decoded.userId });
 
       if (!req.user) {
         return res.status(401).json({ success: false, message: "User not found, token invalid" });

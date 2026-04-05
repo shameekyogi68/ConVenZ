@@ -17,16 +17,32 @@ import '../../services/notification_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// Optional initial tab index forwarded from notification deep links.
+  final int initialTab;
+  const HomeScreen({super.key, this.initialTab = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   int _currentBannerIndex = 0;
   final PageController _bannerController = PageController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // All bookable service names — used for live search filtering
+  static const List<Map<String, dynamic>> _allServices = [
+    {'name': 'Cleaning',     'icon': Icons.cleaning_services},
+    {'name': 'Plumbing',     'icon': Icons.plumbing},
+    {'name': 'Electrician',  'icon': Icons.electrical_services},
+    {'name': 'Painting',     'icon': Icons.format_paint},
+    {'name': 'Moving',       'icon': Icons.local_shipping},
+    {'name': 'AC Repair',    'icon': Icons.ac_unit},
+    {'name': 'Sofa Cleaning','icon': Icons.chair},
+    {'name': 'Car Wash',     'icon': Icons.local_car_wash},
+  ];
 
   // Subscription state
   Map<String, dynamic>? _userSubscription;
@@ -35,7 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    
+    _selectedIndex = widget.initialTab.clamp(0, 3);
+
     _checkUserBlockingStatus();
     LocationService.startLocationTracking();
 
@@ -50,49 +67,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _loadUserSubscription();
     
-    Future.delayed(const Duration(seconds: 8), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted && _loadingSubscription) {
         setState(() => _loadingSubscription = false);
       }
     });
   }
 
+  @override
+  void dispose() {
+    _bannerController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _checkUserBlockingStatus() async {
     try {
       await BlockingHelper.checkUserStatusOnLaunch(context);
-    } catch (e) {
-      print("❌ Error checking blocking status: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadUserSubscription() async {
     try {
       final userId = SharedPrefs.getUserId();
-      print("📱 Loading subscription for userId: $userId");
-      
       if (userId == null || userId.isEmpty) {
-        print("⚠️ No userId found");
         setState(() => _loadingSubscription = false);
         return;
       }
 
       final result = await SubscriptionService.getUserSubscription(userId);
-      print("📥 Subscription result: $result");
-      
       if (mounted) {
         setState(() {
           if (result['success'] == true && result['data'] != null) {
             _userSubscription = result['data'];
-            print("✅ Subscription loaded: ${_userSubscription?['currentPack']}");
           } else {
-            print("⚠️ No active subscription found");
             _userSubscription = null;
           }
           _loadingSubscription = false;
         });
       }
-    } catch (e) {
-      print("❌ Subscription Load Error: $e");
+    } catch (_) {
       if (mounted) {
         setState(() {
           _loadingSubscription = false;
@@ -172,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: const SizedBox(
@@ -194,9 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final expiry = DateTime.parse(expiryDate);
           formattedExpiry = '${expiry.day} ${_getMonthName(expiry.month)}, ${expiry.year}';
-        } catch (e) {
-          print("Date parse error: $e");
-        }
+        } catch (_) {}
       }
 
       return Container(
@@ -211,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -256,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha:0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.verified, color: AppColors.accentMint, size: 40),
@@ -283,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -328,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha:0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.card_giftcard, color: AppColors.accentMint, size: 40),
@@ -357,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppColors.accentMint.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(color: AppColors.accentMint.withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -407,7 +419,65 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildSearchResults() {
+    final query = _searchQuery.toLowerCase();
+    final matches = _allServices
+        .where((s) => (s['name'] as String).toLowerCase().contains(query))
+        .toList();
+
+    if (matches.isEmpty) {
+      return Column(
+        children: [
+          const SizedBox(height: 40),
+          Icon(Icons.search_off, size: 56, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+          Text('No services found for "$_searchQuery"',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('${matches.length} result${matches.length == 1 ? '' : 's'}',
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+        const SizedBox(height: 12),
+        ...matches.map((service) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withValues(alpha:0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(service['icon'] as IconData,
+                    color: AppColors.primaryTeal, size: 22),
+              ),
+              title: Text(service['name'] as String,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+              subtitle: const Text('Tap to book',
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+              onTap: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+                context.push('/map', extra: {'selectedService': service['name']});
+              },
+            )),
+      ],
+    );
+  }
+
   Widget _buildHomeContent() {
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: _buildHomeScrollContent(),
+    );
+  }
+
+  Widget _buildHomeScrollContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -423,31 +493,45 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: AppColors.primaryTeal.withOpacity(0.08),
+                    color: AppColors.primaryTeal.withValues(alpha:0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 8))
               ],
               border: Border.all(color: Colors.white, width: 2),
             ),
-            child: const TextField(
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _searchQuery = value.trim()),
               decoration: InputDecoration(
                 hintText: "Search for services...",
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                icon: Icon(Icons.search, color: AppColors.primaryTeal),
+                icon: const Icon(Icons.search, color: AppColors.primaryTeal),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
               ),
             ),
           ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms, curve: Curves.easeOutCubic),
 
           const SizedBox(height: 25),
-          _buildBannerCarousel(),
-          const SizedBox(height: 25),
 
-          const CategoryGrid(),
-          const SizedBox(height: 25),
-          
-          const PopularServicesList(),
+          if (_searchQuery.isEmpty) ...[
+            _buildBannerCarousel(),
+            const SizedBox(height: 25),
+            const CategoryGrid(),
+            const SizedBox(height: 25),
+            const PopularServicesList(),
+          ] else
+            _buildSearchResults(),
+
           const SizedBox(height: 30),
         ],
       ),
@@ -456,32 +540,68 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Widget bodyContent;
-    switch (_selectedIndex) {
-      case 0: bodyContent = _buildHomeContent(); break;
-      case 1: bodyContent = MyBookingsScreen(); break;
-      case 2: bodyContent = SubscriptionPlansPage(); break;
-      case 3: bodyContent = CustomerProfileScreen(controller: PageController()); break;
-      default: bodyContent = _buildHomeContent();
-    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(child: bodyContent),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: AppColors.primaryTeal,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Bookings"),
-          BottomNavigationBarItem(icon: Icon(Icons.paid), label: "Plans"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
+      // IndexedStack keeps all tabs alive — scroll position and state are preserved
+      body: SafeArea(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            _buildHomeContent(),
+            MyBookingsScreen(),
+            SubscriptionPlansPage(),
+            const CustomerProfileScreen(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: AppColors.primaryTeal,
+          unselectedItemColor: const Color(0xFFADB5BD),
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          selectedFontSize: 11,
+          unselectedFontSize: 11,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home_outlined, size: 24),
+              activeIcon: const Icon(Icons.home_rounded, size: 26),
+              label: "Home",
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.calendar_today_outlined, size: 22),
+              activeIcon: const Icon(Icons.calendar_today_rounded, size: 24),
+              label: "Bookings",
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.workspace_premium_outlined, size: 24),
+              activeIcon: const Icon(Icons.workspace_premium_rounded, size: 26),
+              label: "Plans",
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person_outline_rounded, size: 24),
+              activeIcon: const Icon(Icons.person_rounded, size: 26),
+              label: "Profile",
+            ),
+          ],
+        ),
       ),
     );
   }

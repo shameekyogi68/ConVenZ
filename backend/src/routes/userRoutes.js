@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import {
   registerUser,
   verifyOtp,
@@ -26,14 +27,29 @@ import {
   checkBlockStatus
 } from "../middlewares/checkBlocked.js";
 import { protect } from "../middlewares/authMiddleware.js";
-import { validate, authSchemas, userSchemas, bookingSchemas } from "../middlewares/validateMiddleware.js";
+import { validate, authSchemas, userSchemas, bookingSchemas, notificationSchemas } from "../middlewares/validateMiddleware.js";
+
+// Stricter rate limit for auth endpoints — prevents OTP brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many attempts. Please try again after 15 minutes.",
+  },
+});
 
 const router = express.Router();
 
 // 🔒 ADMIN AUTH MIDDLEWARE
 const adminProtect = (req, res, next) => {
   const adminSecret = req.headers['x-admin-secret'];
-  if (adminSecret === process.env.ADMIN_SECRET || adminSecret === 'convenz_admin_2024_secret') {
+  if (!process.env.ADMIN_SECRET) {
+    return res.status(500).json({ success: false, message: "Server misconfiguration: ADMIN_SECRET not set" });
+  }
+  if (adminSecret === process.env.ADMIN_SECRET) {
     next();
   } else {
     res.status(401).json({ success: false, message: "Unauthorized: Admin access required" });
@@ -45,16 +61,16 @@ const adminProtect = (req, res, next) => {
    NOTE: Register and OTP verification do NOT have blocking middleware
    because blocking is checked AFTER user logs in
 ------------------------------------------- */
-router.post("/register", validate(authSchemas.register), registerUser); // No blocking check - allow registration
-router.post("/user/register", validate(authSchemas.register), registerUser); // Alias for Flutter app compatibility
-router.post("/verify-otp", validate(authSchemas.verifyOtp), checkUserBlocked, verifyOtp); // Check block status during login
-router.post("/user/verify-otp", validate(authSchemas.verifyOtp), checkUserBlocked, verifyOtp); // Alias for Flutter app compatibility
+router.post("/register", authLimiter, validate(authSchemas.register), registerUser);
+router.post("/user/register", authLimiter, validate(authSchemas.register), registerUser);
+router.post("/verify-otp", authLimiter, validate(authSchemas.verifyOtp), checkUserBlocked, verifyOtp);
+router.post("/user/verify-otp", authLimiter, validate(authSchemas.verifyOtp), checkUserBlocked, verifyOtp);
 
 router.post("/update-user", protect, validate(userSchemas.updateProfile), checkUserBlocked, updateUserDetails);
 router.post("/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Protected
 router.post("/user/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Alias
-router.post("/update-fcm-token", protect, updateFcmToken); // Protected
-router.post("/fcm/update-token", protect, updateFcmToken); // Clean alias for Flutter
+router.post("/update-fcm-token", protect, validate(notificationSchemas.updateFcmToken), updateFcmToken);
+router.post("/fcm/update-token", protect, validate(notificationSchemas.updateFcmToken), updateFcmToken);
 
 router.get("/profile/:userId", protect, getUserProfile); // Protected
 router.post("/profile/:userId", protect, checkUserBlocked, updateUserProfile); // Protected
@@ -70,7 +86,10 @@ router.post("/user/profile/:userId", protect, checkUserBlocked, updateUserProfil
 // 🔒 SERVER-TO-SERVER AUTH MIDDLEWARE (Used for Webhooks)
 const serverProtect = (req, res, next) => {
   const serverSecret = req.headers['x-server-secret'];
-  if (serverSecret === process.env.SERVER_SECRET || serverSecret === 'convenz_backend_secure_mesh') {
+  if (!process.env.SERVER_SECRET) {
+    return res.status(500).json({ success: false, message: "Server misconfiguration: SERVER_SECRET not set" });
+  }
+  if (serverSecret === process.env.SERVER_SECRET) {
     next();
   } else {
     res.status(401).json({ success: false, message: "Unauthorized: Server-to-Server access required" });
@@ -78,7 +97,7 @@ const serverProtect = (req, res, next) => {
 };
 
 // Status update from vendor backend (Requires cross-server auth)
-router.post("/booking/status-update", serverProtect, updateBookingStatus);
+router.post("/booking/status-update", serverProtect, validate(bookingSchemas.statusUpdate), updateBookingStatus);
 
 // Create booking - MUST come before :bookingId route
 router.post("/booking/create", protect, validate(bookingSchemas.create), checkUserBlocked, createCustomerBooking);
@@ -106,7 +125,7 @@ router.get("/admin/check-status/:userId", adminProtect, checkBlockStatus);
 /* ------------------------------------------
    💳 SUBSCRIPTION ROUTES
 ------------------------------------------- */
-router.post("/create-plans", createDefaultPlans);
+router.post("/create-plans", adminProtect, createDefaultPlans);
 router.get("/plans/all", getPlansByType);
 router.get("/plans", getAllPlans);
 router.get("/plans/:id", getPlanById);

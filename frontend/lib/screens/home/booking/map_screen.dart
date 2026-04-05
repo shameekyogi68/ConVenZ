@@ -103,8 +103,8 @@ class _MapScreenState extends State<MapScreen> {
       final data = jsonDecode(res.body);
 
       if (data['results'] != null && data['results'].isNotEmpty) {
-        final lat = data['results'][0]['geometry']['lat'];
-        final lng = data['results'][0]['geometry']['lng'];
+        final double lat = double.tryParse(data['results'][0]['geometry']['lat'].toString()) ?? 0.0;
+        final double lng = double.tryParse(data['results'][0]['geometry']['lng'].toString()) ?? 0.0;
         final newCenter = LatLng(lat, lng);
 
         _mapController.move(newCenter, 16);
@@ -145,7 +145,7 @@ class _MapScreenState extends State<MapScreen> {
       if (data["results"] != null && data["results"].isNotEmpty) {
         final comp = data["results"][0]["components"];
 
-        String placeName = comp["point_of_interest"] ??
+        String placeName = (comp["point_of_interest"] ??
             comp["hospital"] ??
             comp["clinic"] ??
             comp["building"] ??
@@ -154,18 +154,18 @@ class _MapScreenState extends State<MapScreen> {
             comp["office"] ??
             comp["tourism"] ??
             comp["leisure"] ??
-            "";
+            "").toString();
 
-        String houseNumber = comp["house_number"] ?? "";
-        String road = comp["road"] ??
+        String houseNumber = (comp["house_number"] ?? "").toString();
+        String road = (comp["road"] ??
             comp["residential"] ??
             comp["neighbourhood"] ??
             comp["suburb"] ??
-            "";
-        String city = comp["city"] ?? comp["town"] ?? comp["village"] ?? "";
-        String state = comp["state"] ?? "";
-        String postcode = comp["postcode"] ?? "";
-        String country = comp["country"] ?? "";
+            "").toString();
+        String city = (comp["city"] ?? comp["town"] ?? comp["village"] ?? "").toString();
+        String state = (comp["state"] ?? "").toString();
+        String postcode = (comp["postcode"] ?? "").toString();
+        String country = (comp["country"] ?? "").toString();
 
         if (road.toLowerCase().contains("unnamed")) road = "";
 
@@ -180,7 +180,7 @@ class _MapScreenState extends State<MapScreen> {
         ].join(", ");
 
         if (cleanedAddress.trim().isEmpty) {
-          cleanedAddress = data["results"][0]["formatted"] ?? "";
+          cleanedAddress = (data["results"][0]["formatted"] ?? "").toString();
         }
 
         setState(() {

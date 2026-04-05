@@ -6,6 +6,7 @@ class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool enabled;
   final IconData? icon;
+  final bool isLoading;
 
   const PrimaryButton({
     super.key,
@@ -13,11 +14,12 @@ class PrimaryButton extends StatelessWidget {
     this.onPressed,
     this.enabled = true,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDisabled = !enabled || onPressed == null;
+    final isDisabled = !enabled || onPressed == null || isLoading;
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -32,16 +34,33 @@ class PrimaryButton extends StatelessWidget {
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         ),
-        child: icon != null
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 20),
-                  const SizedBox(width: 8),
-                  Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
-                ],
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
               )
-            : Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+            : icon != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 20),
+                      const SizedBox(width: 8),
+                      Text(text,
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3)),
+                    ],
+                  )
+                : Text(text,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3)),
       ),
     );
   }

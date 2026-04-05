@@ -9,10 +9,12 @@ import asyncHandler from "../utils/asyncHandler.js";
 ------------------------------------------------------------ */
 export const receiveVendorUpdate = asyncHandler(async (req, res) => {
   // ✅ 1. Auth Validation
+  if (!process.env.VENDOR_SECRET) {
+    res.status(500);
+    throw new Error('Server misconfiguration: VENDOR_SECRET not set');
+  }
   const vendorSecret = req.headers['x-vendor-secret'];
-  const expectedSecret = process.env.VENDOR_SECRET || 'vendor-secret-key-2024';
-
-  if (!vendorSecret || vendorSecret !== expectedSecret) {
+  if (!vendorSecret || vendorSecret !== process.env.VENDOR_SECRET) {
     res.status(401);
     throw new Error('Unauthorized: Invalid vendor secret');
   }

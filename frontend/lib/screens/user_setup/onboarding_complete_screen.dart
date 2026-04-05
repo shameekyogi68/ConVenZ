@@ -54,20 +54,14 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
           .timeout(const Duration(seconds: 5), onTimeout: () => null);
 
       if (position != null) {
-        final apiResponse = await AuthService.updateUserLocation(
+        await AuthService.updateUserLocation(
           userId,
           position.latitude,
           position.longitude,
         );
 
-        if (apiResponse['success'] != true) {
-          // Log error but allow proceeding
-          print("Location update failed: ${apiResponse['message']}");
-        }
       }
-    } catch (e) {
-      print('Location error: $e');
-    }
+    } catch (_) {}
 
     // 3. ✅ NAVIGATION FIX: Go to Home and clear back stack
     setState(() { _isLoading = false; });

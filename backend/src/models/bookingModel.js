@@ -26,31 +26,37 @@ const bookingSchema = new mongoose.Schema(
     selectedService: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 100,
     },
 
     // Job description/details
     jobDescription: {
       type: String,
       required: true,
+      trim: true,
+      maxlength: 2000,
     },
 
     // Scheduled date
     date: {
       type: String,
       required: true,
+      trim: true,
     },
 
     // Scheduled time
     time: {
       type: String,
       required: true,
+      trim: true,
     },
 
     // Booking location
     location: {
-      type: { type: String, default: "Point" },
+      type: { type: String, enum: ["Point"], default: "Point" },
       coordinates: { type: [Number], required: true }, // [longitude, latitude]
-      address: { type: String, required: true },
+      address: { type: String, required: true, trim: true, maxlength: 500 },
     },
 
     // Booking status
@@ -64,21 +70,31 @@ const bookingSchema = new mongoose.Schema(
     otpStart: {
       type: Number,
       default: null,
+      select: false,
     },
 
     // Distance from vendor to customer (in km)
     distance: {
       type: Number,
       default: null,
+      min: 0,
+    },
+
+    // Reason provided by vendor when rejecting a booking
+    rejectionReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: null,
     },
 
     // External vendor details (from callback)
     externalVendor: {
-      vendorId: String,
-      vendorName: String,
-      vendorPhone: String,
-      vendorAddress: String,
-      serviceType: String,
+      vendorId: { type: String, trim: true },
+      vendorName: { type: String, trim: true },
+      vendorPhone: { type: String, trim: true },
+      vendorAddress: { type: String, trim: true },
+      serviceType: { type: String, trim: true },
       assignedAt: Date,
       lastUpdated: Date,
     },

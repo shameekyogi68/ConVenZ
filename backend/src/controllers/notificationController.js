@@ -1,248 +1,133 @@
 import User from "../models/userModel.js";
 import { sendNotification, sendMultipleNotifications, sendTopicNotification } from "../utils/sendNotification.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 /* ------------------------------------------------------------
    💾 UPDATE FCM TOKEN
+   userId resolved from JWT — body userId ignored for security
 ------------------------------------------------------------ */
-export const updateFcmToken = async (req, res) => {
-  try {
-    const { userId, fcmToken } = req.body;
+export const updateFcmToken = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const { fcmToken } = req.body;
 
-    if (!userId || !fcmToken) {
-      console.log(`❌ TOKEN_UPDATE_FAILED | ${new Date().toISOString()} | Reason: Missing userId or token`);
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId and fcmToken are required" 
-      });
-    }
-
-    const user = await User.findOne({ user_id: userId });
-
-    if (!user) {
-      console.log(`❌ TOKEN_UPDATE_FAILED | ${new Date().toISOString()} | User: ${userId} | Reason: User not found`);
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
-      });
-    }
-
-    // 🛡️ PREVENT DUPLICATES: Clear this token from any other users who might have it
-    // This happens if a user logs into a different account on the same phone
-    await User.updateMany(
-      { fcmToken: fcmToken, user_id: { $ne: userId } },
-      { $set: { fcmToken: "" } }
-    );
-
-    const isNew = !user.fcmToken;
-    user.fcmToken = fcmToken;
-    await user.save();
-
-    console.log(`✅ TOKEN_UPDATED | ${new Date().toISOString()} | User: ${user.user_id} | Phone: ${user.phone} | Status: ${isNew ? 'NEW' : 'REFRESH'}`);
-
-    return res.json({ 
-      success: true, 
-      message: "FCM token updated successfully" 
-    });
-  } catch (err) {
-    console.error(`❌ TOKEN_UPDATE_ERROR | ${new Date().toISOString()} | Error: ${err.message}`);
-    return res.status(500).json({ 
-      success: false, 
-      message: err.message 
-    });
+  const user = await User.findOne({ user_id: userId });
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
   }
-};
+
+  // Clear token from any other user (same device, different account)
+  await User.updateMany(
+    { fcmToken, user_id: { $ne: userId } },
+    { $set: { fcmToken: "" } }
+  );
+
+  user.fcmToken = fcmToken;
+  await user.save();
+
+  console.log(`✅ TOKEN_UPDATED | User: ${user.user_id} | Status: ${user.fcmToken ? 'REFRESH' : 'NEW'}`);
+
+  return res.status(200).json({ success: true, message: "FCM token updated successfully" });
+});
 
 /* ------------------------------------------------------------
-   📤 SEND NOTIFICATION TO USER
+   📤 SEND NOTIFICATION TO SINGLE USER (Admin / Internal)
 ------------------------------------------------------------ */
-export const sendNotificationToUser = async (req, res) => {
-  try {
-    console.log('\n📤 === SEND NOTIFICATION TO USER ===');
-    const { userId, title, body, data } = req.body;
+export const sendNotificationToUser = asyncHandler(async (req, res) => {
+  const { userId, title, body, data } = req.body;
 
-    if (!userId || !title || !body) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ 
-        success: false, 
-        message: "userId, title, and body are required" 
-      });
-    }
-
-    // Get user's FCM token
-    const user = await User.findOne({ user_id: userId });
-
-    if (!user) {
-      console.log(`❌ SEND_NOTIFICATION_FAILED | ${new Date().toISOString()} | User ${userId} not found`);
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
-      });
-    }
-
-    if (!user.fcmToken) {
-      console.log(`❌ NO_FCM_TOKEN | ${new Date().toISOString()} | User: ${userId}`);
-      return res.status(400).json({ 
-        success: false, 
-        message: "User has no FCM token registered" 
-      });
-    }
-
-    // Send notification using utility function
-    try {
-      const response = await sendNotification(user.fcmToken, title, body, data || {});
-      console.log(`✅ MANUAL_NOTIFICATION_SENT | ${new Date().toISOString()} | User: ${userId} | MessageID: ${response}`);
-
-      return res.json({ 
-        success: true, 
-        message: "Notification sent successfully",
-        messageId: response
-      });
-    } catch (notificationError) {
-      // If token is invalid/expired, remove it from database
-      if (notificationError.message.includes('Invalid or expired FCM token') ||
-          notificationError.message.includes('FCM entity not found')) {
-        console.log(`🗑️  TOKEN_REMOVED | ${new Date().toISOString()} | User: ${userId} | Reason: Invalid/Expired`);
-        user.fcmToken = null;
-        await user.save();
-        
-        return res.status(400).json({
-          success: false,
-          message: "FCM token is invalid or expired. User needs to re-register for notifications.",
-          tokenRemoved: true
-        });
-      }
-      throw notificationError;
-    }
-  } catch (err) {
-    console.error(`❌ SEND_NOTIFICATION_ERROR | ${new Date().toISOString()} | User: ${userId} | Error: ${err.message}`);
-    return res.status(500).json({ 
-      success: false, 
-      message: err.message 
-    });
+  if (!userId || !title || !body) {
+    res.status(400);
+    throw new Error("userId, title, and body are required");
   }
-};
+
+  const user = await User.findOne({ user_id: userId });
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (!user.fcmToken) {
+    res.status(400);
+    throw new Error("User has no FCM token registered");
+  }
+
+  try {
+    const messageId = await sendNotification(user.fcmToken, title, body, data || {});
+    return res.status(200).json({ success: true, message: "Notification sent successfully", messageId });
+  } catch (notificationError) {
+    if (
+      notificationError.message.includes('Invalid or expired FCM token') ||
+      notificationError.message.includes('FCM entity not found')
+    ) {
+      user.fcmToken = null;
+      await user.save();
+      res.status(400);
+      throw new Error("FCM token is invalid or expired. User needs to re-register for notifications.");
+    }
+    throw notificationError;
+  }
+});
 
 /* ------------------------------------------------------------
-   📤 SEND NOTIFICATION TO MULTIPLE USERS
+   📤 SEND NOTIFICATION TO MULTIPLE USERS (Admin / Internal)
 ------------------------------------------------------------ */
-export const sendNotificationToMultipleUsers = async (req, res) => {
-  try {
-    console.log('\n📤 === SEND NOTIFICATION TO MULTIPLE USERS ===');
-    const { userIds, title, body, data } = req.body;
+export const sendNotificationToMultipleUsers = asyncHandler(async (req, res) => {
+  const { userIds, title, body, data } = req.body;
 
-    if (!userIds || !Array.isArray(userIds) || !title || !body) {
-      console.log('❌ Missing required fields or invalid userIds array');
-      return res.status(400).json({ 
-        success: false, 
-        message: "userIds (array), title, and body are required" 
-      });
-    }
-
-    console.log('👥 Target User IDs:', userIds);
-    console.log('📨 Title:', title);
-    console.log('📝 Body:', body);
-
-    // Get all users' FCM tokens
-    const users = await User.find({ 
-      user_id: { $in: userIds },
-      fcmToken: { $ne: null }
-    });
-
-    if (users.length === 0) {
-      console.log('❌ No users found with FCM tokens');
-      return res.status(404).json({ 
-        success: false, 
-        message: "No users found with FCM tokens" 
-      });
-    }
-
-    console.log(`✅ Found ${users.length} users with FCM tokens`);
-
-    const tokens = users.map(user => user.fcmToken);
-
-    // Send notifications using utility function
-    const response = await sendMultipleNotifications(tokens, title, body, data || {});
-    
-    console.log('✅ Notifications sent');
-    console.log(`📊 Success: ${response.successCount}, Failed: ${response.failureCount}`);
-    
-    // Clean up invalid tokens from database
-    if (response.failureCount > 0) {
-      const invalidTokenIndexes = [];
-      response.responses.forEach((resp, idx) => {
-        if (!resp.success && 
-            (resp.error?.code === 'messaging/registration-token-not-registered' ||
-             resp.error?.code === 'messaging/invalid-registration-token')) {
-          invalidTokenIndexes.push(idx);
-        }
-      });
-      
-      if (invalidTokenIndexes.length > 0) {
-        console.log(`🗑️  Removing ${invalidTokenIndexes.length} invalid tokens from database`);
-        const invalidUserIds = invalidTokenIndexes.map(idx => users[idx].user_id);
-        await User.updateMany(
-          { user_id: { $in: invalidUserIds } },
-          { $set: { fcmToken: null } }
-        );
-        console.log('✅ Invalid tokens removed');
-      }
-    }
-    
-    console.log('='.repeat(50));
-
-    return res.json({ 
-      success: true, 
-      message: "Notifications sent",
-      successCount: response.successCount,
-      failureCount: response.failureCount,
-      invalidTokensRemoved: response.failureCount
-    });
-  } catch (err) {
-    console.error('❌ Send Multiple Notifications Error:', err.message);
-    return res.status(500).json({ 
-      success: false, 
-      message: err.message 
-    });
+  if (!userIds || !Array.isArray(userIds) || !title || !body) {
+    res.status(400);
+    throw new Error("userIds (array), title, and body are required");
   }
-};
+
+  const users = await User.find({
+    user_id: { $in: userIds },
+    fcmToken: { $nin: [null, ""] },
+  });
+
+  if (users.length === 0) {
+    res.status(404);
+    throw new Error("No users found with registered FCM tokens");
+  }
+
+  const tokens = users.map((u) => u.fcmToken);
+  const response = await sendMultipleNotifications(tokens, title, body, data || {});
+
+  // Clean up invalid tokens
+  if (response.failureCount > 0) {
+    const invalidIds = response.responses
+      .map((r, i) => (!r.success ? users[i]?.user_id : null))
+      .filter(Boolean);
+
+    if (invalidIds.length > 0) {
+      await User.updateMany({ user_id: { $in: invalidIds } }, { $set: { fcmToken: null } });
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Notifications dispatched",
+    successCount: response.successCount,
+    failureCount: response.failureCount,
+  });
+});
 
 /* ------------------------------------------------------------
-   📤 SEND NOTIFICATION TO TOPIC
+   📤 SEND NOTIFICATION TO TOPIC (Admin / Internal)
 ------------------------------------------------------------ */
-export const sendNotificationToTopic = async (req, res) => {
-  try {
-    console.log('\n📤 === SEND NOTIFICATION TO TOPIC ===');
-    const { topic, title, body, data } = req.body;
+export const sendNotificationToTopic = asyncHandler(async (req, res) => {
+  const { topic, title, body, data } = req.body;
 
-    if (!topic || !title || !body) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ 
-        success: false, 
-        message: "topic, title, and body are required" 
-      });
-    }
-
-    console.log('📢 Topic:', topic);
-    console.log('📨 Title:', title);
-    console.log('📝 Body:', body);
-
-    // Send notification using utility function
-    const response = await sendTopicNotification(topic, title, body, data || {});
-    
-    console.log('✅ Topic notification sent successfully');
-    console.log('📬 Message ID:', response);
-    console.log('='.repeat(50));
-
-    return res.json({ 
-      success: true, 
-      message: "Topic notification sent successfully",
-      messageId: response
-    });
-  } catch (err) {
-    console.error('❌ Send Topic Notification Error:', err.message);
-    return res.status(500).json({ 
-      success: false, 
-      message: err.message 
-    });
+  if (!topic || !title || !body) {
+    res.status(400);
+    throw new Error("topic, title, and body are required");
   }
-};
+
+  const messageId = await sendTopicNotification(topic, title, body, data || {});
+
+  return res.status(200).json({
+    success: true,
+    message: "Topic notification sent successfully",
+    messageId,
+  });
+});

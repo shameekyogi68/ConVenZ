@@ -53,9 +53,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           _activeMessage = "You have an active $planName until $formattedDate";
         });
       }
-    } catch (e) {
-      print("❌ Error checking subscription: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> _handlePlanSelection(SubscriptionPlan plan) async {
@@ -76,12 +74,16 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.green,
-          content: Text("✅ ${plan.name} activated successfully!"),
+          backgroundColor: AppColors.accentMint,
+          content: Text("${plan.name} activated successfully!",
+              style: const TextStyle(color: Color(0xFF1F465A), fontWeight: FontWeight.w600)),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 2),
         ),
       );
-      
+
       // Navigate to home screen after success
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) context.go('/home');
@@ -89,11 +91,15 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
     } else {
       // Show error message - could be "already has active subscription" or other error
       String errorMessage = result['message'] ?? 'Failed to activate plan';
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.red,
-          content: Text("❌ $errorMessage"),
+          backgroundColor: AppColors.dangerRed,
+          content: Text(errorMessage,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 4),
         ),
       );
@@ -173,7 +179,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withOpacity(0.06),
+                      color: AppColors.primaryTeal.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -189,7 +195,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryTeal.withOpacity(0.35),
+                              color: AppColors.primaryTeal.withValues(alpha: 0.35),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -241,19 +247,19 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        border: Border.all(color: Colors.orange),
+                        color: AppColors.accentMint.withValues(alpha: 0.08),
+                        border: Border.all(color: AppColors.accentMint.withValues(alpha: 0.4)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.info, color: Colors.orange),
+                          const Icon(Icons.verified_rounded, color: AppColors.accentMint, size: 20),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               _activeMessage ?? '',
                               style: const TextStyle(
-                                color: Colors.orange,
+                                color: AppColors.primaryTeal,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -280,7 +286,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
               // Loading overlay
               if (_isLoading)
                 Container(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   child: const Center(
                     child: CircularProgressIndicator(
                       color: AppColors.primaryTeal,

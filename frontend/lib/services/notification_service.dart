@@ -7,341 +7,225 @@ import 'api_service.dart';
 import '../../firebase_options.dart';
 import '../core/router/app_router.dart';
 
-/// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Check notification type
-  String? type = message.data['type'];
-  
-  if (type == 'otp') {
-    String? otp = message.data['otp'] ?? message.notification?.body;
-    print('🔐 OTP Received: $otp');
-    await NotificationService.showOtpNotification(message);
-  } else if (type == 'BOOKING_STATUS_UPDATE' || type == 'booking_status_update') {
-    print('📋 Background: Booking Status Update');
-    await NotificationService.showBookingNotification(message);
-  } else if (type == 'VENDOR_ASSIGNED' || type == 'vendor_assigned') {
-    print('👤 Background: Vendor Assigned');
-    await NotificationService.showVendorAssignedNotification(message);
-  } else {
-    await NotificationService.showNotification(message);
+// ─────────────────────────────────────────────────────────────
+// Canonical notification type strings — single source of truth.
+// All comparisons go through these constants.
+// ─────────────────────────────────────────────────────────────
+class _NotifType {
+  static const otp               = 'otp';
+  static const bookingConfirm    = 'BOOKING_CONFIRMATION';
+  static const bookingStatus     = 'BOOKING_STATUS_UPDATE';
+  static const vendorAssigned    = 'VENDOR_ASSIGNED';
+  static const vendorUpdate      = 'VENDOR_UPDATE';
+  static const newBooking        = 'NEW_BOOKING';
+  static const marketing         = 'MARKETING_NUDGE';
+
+  /// Returns true for any type that should deep-link to the Bookings tab.
+  static bool isBookingRelated(String? type) {
+    if (type == null) return false;
+    return const {
+      bookingConfirm,
+      bookingStatus,
+      vendorAssigned,
+      vendorUpdate,
+      newBooking,
+      // Legacy variants from older backend versions
+      'STATUS_UPDATE',
+      'booking_status_update',
+      'vendor_assigned',
+    }.contains(type);
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// Background handler — must be a top-level function.
+// Runs in a separate isolate; Firebase must be re-initialised.
+// ─────────────────────────────────────────────────────────────
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService._dispatchLocalNotification(message);
+}
+
 class NotificationService {
-  static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
   static String? _fcmToken;
-  
-  // Android notification channels
-  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+
+  // ── Android channels ──────────────────────────────────────
+  static const _highChannel = AndroidNotificationChannel(
     'high_importance_channel',
-    'High Importance Notifications',
-    description: 'This channel is used for important notifications.',
+    'Service Updates',
+    description: 'Booking confirmations, vendor updates and status changes.',
     importance: Importance.high,
     playSound: true,
     enableVibration: true,
   );
-  
-  static const AndroidNotificationChannel _defaultChannel = AndroidNotificationChannel(
-    'default',
-    'Default Notifications',
-    description: 'Default notification channel for general messages.',
-    importance: Importance.defaultImportance,
-    playSound: true,
-  );
-  
-  static const AndroidNotificationChannel otpChannel = AndroidNotificationChannel(
+
+  static const _otpChannel = AndroidNotificationChannel(
     'otp_channel',
-    'OTP Notifications',
-    description: 'Channel for OTP verification codes.',
+    'OTP Codes',
+    description: 'One-time password verification codes.',
     importance: Importance.max,
     playSound: true,
     enableVibration: true,
     showBadge: true,
   );
 
-  /// Initialize Firebase Messaging and Local Notifications
+  static const _marketingChannel = AndroidNotificationChannel(
+    'marketing_channel',
+    'Offers & Reminders',
+    description: 'Promotions, tips and service reminders.',
+    importance: Importance.defaultImportance,
+    playSound: false,
+    enableVibration: false,
+  );
+
+  // ── Public API ────────────────────────────────────────────
+
   static Future<void> initialize() async {
     try {
-      // Request Android 13+ notification permission
       await Permission.notification.request();
-      
-      // Initialize local notifications
-      await _initializeLocalNotifications();
-      
-      // Create Android notification channels
-      final androidImplementation = _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await androidImplementation?.createNotificationChannel(_channel);
-      await androidImplementation?.createNotificationChannel(_defaultChannel);
-      await androidImplementation?.createNotificationChannel(otpChannel);
+      await _initLocalNotifications();
+      await _createAndroidChannels();
 
-      // Request notification permissions
-      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+      final settings = await _fcm.requestPermission(
         alert: true,
         badge: true,
         sound: true,
-        provisional: false,
-        announcement: false,
-        carPlay: false,
-        criticalAlert: false,
       );
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // Delete old token and get a fresh one
-        try {
-          await _firebaseMessaging.deleteToken();
-        } catch (e) {
-          // Ignore delete errors
-        }
-        
-        // Get fresh FCM token
-        _fcmToken = await _firebaseMessaging.getToken();
-        if (_fcmToken != null) {
-          print('FCM Token: $_fcmToken');
-          await _saveFcmTokenToBackend(_fcmToken!);
-        }
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
 
-        // Listen for token refresh
-        _firebaseMessaging.onTokenRefresh.listen((newToken) {
-          print('FCM Token Refreshed: $newToken');
-          _fcmToken = newToken;
-          _saveFcmTokenToBackend(newToken);
-        });
-
-        // Handle foreground messages
-        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-        // Handle background message clicks (onMessageOpenedApp)
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageClick);
-
-        // Check if app was opened from a terminated state
-        RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
-        if (initialMessage != null) {
-          _handleMessageClick(initialMessage);
-        }
+      _fcmToken = await _fcm.getToken();
+      if (_fcmToken != null) {
+        await _saveTokenToBackend(_fcmToken!);
       }
-    } catch (e) {
-      // Silent fail
+
+      _fcm.onTokenRefresh.listen((token) {
+        _fcmToken = token;
+        _saveTokenToBackend(token);
+      });
+
+      FirebaseMessaging.onMessage.listen(_dispatchLocalNotification);
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
+
+      final initial = await _fcm.getInitialMessage();
+      if (initial != null) _handleTap(initial);
+    } catch (_) {
+      // Silent — notification failure must never crash the app
     }
   }
 
-  /// Initialize local notifications
-  static Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+  static String? getFcmToken() => _fcmToken;
 
-    await _localNotifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
-  }
-
-  /// Handle notification tap
-  static void _onNotificationTapped(NotificationResponse response) {
-    // Handle navigation based on payload
-    if (response.payload != null) {
-      if (response.payload!.startsWith('vendor_assigned') || 
-          response.payload!.startsWith('booking_update') ||
-          response.payload == 'otp' || 
-          response.payload == 'BOOKING_STATUS_UPDATE') {
-        try {
-          AppRouter.router.go('/home');
-        } catch (e) {
-          print('Notification navigation error: $e');
-        }
+  /// Call after login/register to ensure the backend has the latest token.
+  static Future<void> refreshAndSendToken() async {
+    try {
+      final token = await _fcm.getToken();
+      if (token != null) {
+        _fcmToken = token;
+        await _saveTokenToBackend(token);
       }
-    }
+    } catch (_) {}
   }
 
-  /// Handle foreground messages
-  static Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    // Check notification type
-    String? type = message.data['type'];
-    
-    if (type == 'otp') {
-      String? otp = message.data['otp'] ?? message.notification?.body;
-      print('🔐 OTP Received: $otp');
-      await showOtpNotification(message);
-    } else if (type == 'BOOKING_STATUS_UPDATE' || type == 'booking_status_update') {
-      print('📋 Booking Status Update: ${message.data}');
-      await showBookingNotification(message);
-    } else if (type == 'VENDOR_ASSIGNED' || type == 'vendor_assigned') {
-      print('👤 Vendor Assigned: ${message.data}');
-      await showVendorAssignedNotification(message);
+  static Future<void> subscribeToTopic(String topic) async {
+    try { await _fcm.subscribeToTopic(topic); } catch (_) {}
+  }
+
+  static Future<void> unsubscribeFromTopic(String topic) async {
+    try { await _fcm.unsubscribeFromTopic(topic); } catch (_) {}
+  }
+
+  // ── Internal dispatch (foreground + background) ───────────
+
+  /// Single routing function used by both foreground listener and
+  /// the top-level background handler — guarantees identical behaviour.
+  static Future<void> _dispatchLocalNotification(RemoteMessage message) async {
+    final type = message.data['type'] as String?;
+
+    if (type == _NotifType.otp) {
+      await _showOtp(message);
+    } else if (_NotifType.isBookingRelated(type)) {
+      await _showBooking(message);
+    } else if (type == _NotifType.marketing) {
+      await _showMarketing(message);
     } else {
-      await showNotification(message);
+      await _showGeneric(message);
     }
   }
 
-  /// Show local notification
-  static Future<void> showNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    String? type = message.data['type'];
-    
-    // Default values
-    String title = notification?.title ?? 'New Message';
-    String body = notification?.body ?? '';
+  // ── Tap / deep-link handler ────────────────────────────────
 
-    // Customize based on type
-    if (type == 'otp') {
-      title = notification?.title ?? 'OTP Verification';
-      body = notification?.body ?? 'Your verification code has arrived';
-    } else if (type == 'welcome') {
-      title = notification?.title ?? 'Welcome!';
-      body = notification?.body ?? 'Welcome to Convenz!';
-    } else if (type == 'profile_update') {
-      title = notification?.title ?? 'Profile Updated';
-      body = notification?.body ?? 'Your profile has been updated successfully';
-    } else if (type == 'location_update') {
-      title = notification?.title ?? 'Location Update';
-      body = notification?.body ?? 'Location information updated';
-    }
-
-    // Show notification if we have title or body
-    if (title.isNotEmpty || body.isNotEmpty) {
-      await _localNotifications.show(
-        notification.hashCode,
-        title,
-        body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-            showWhen: true,
-            icon: '@mipmap/ic_launcher',
-            playSound: true,
-            enableVibration: true,
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
-        payload: type ?? '',
-      );
-    }
+  /// Unified navigation handler for both FCM taps and local notification taps.
+  static void _navigateForMessage(String? type, String? bookingId) {
+    try {
+      if (_NotifType.isBookingRelated(type)) {
+        final extra = <String, dynamic>{'tab': 1};
+        if (bookingId != null && bookingId.isNotEmpty) {
+          extra['bookingId'] = bookingId;
+        }
+        AppRouter.router.go('/home', extra: extra);
+      } else if (type == _NotifType.otp) {
+        // User is already on the OTP screen — no navigation needed.
+      } else {
+        AppRouter.router.go('/home');
+      }
+    } catch (_) {}
   }
 
-  /// Show booking status update notification
-  static Future<void> showBookingNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    String? bookingId = message.data['bookingId'];
-    String? status = message.data['status'] ?? message.data['bookingStatus'];
-    
-    String title = notification?.title ?? 'Booking Update';
-    String body = notification?.body ?? 'Your booking status has been updated to: $status';
-    
-    await _localNotifications.show(
-      bookingId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.high,
-          priority: Priority.high,
-          showWhen: true,
-          icon: '@mipmap/ic_launcher',
-          playSound: true,
-          enableVibration: true,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      ),
-      payload: 'booking_update:$bookingId',
+  /// Called when user taps a notification while app is background/terminated.
+  static void _handleTap(RemoteMessage message) {
+    _navigateForMessage(
+      message.data['type'] as String?,
+      message.data['bookingId'] as String?,
     );
   }
 
-  /// Show vendor assigned notification
-  static Future<void> showVendorAssignedNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    String? vendorName = message.data['vendorName'];
-    String? bookingId = message.data['bookingId'];
-    
-    String title = notification?.title ?? '👤 Vendor Assigned!';
-    String body = notification?.body ?? 
-        (vendorName != null 
-            ? '$vendorName has accepted your booking!' 
-            : 'A vendor has accepted your booking!');
-    
-    await _localNotifications.show(
-      bookingId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+  /// Called when user taps a flutter_local_notifications notification.
+  static void _onLocalTap(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+
+    // Payload format: "<type>:<bookingId>" or just "<type>"
+    final parts = payload.split(':');
+    final type = parts[0];
+    final bookingId = parts.length > 1 ? parts[1] : null;
+    _navigateForMessage(type, bookingId);
+  }
+
+  // ── Notification display helpers ──────────────────────────
+
+  /// Deterministic notification ID from bookingId, or fallback to message hash.
+  static int _notifId(RemoteMessage message, {String prefix = ''}) {
+    final bookingId = message.data['bookingId'] as String?;
+    if (bookingId != null && bookingId.isNotEmpty) {
+      return '$prefix$bookingId'.hashCode.abs();
+    }
+    return message.messageId?.hashCode.abs() ?? message.hashCode.abs();
+  }
+
+  static Future<void> _showOtp(RemoteMessage message) async {
+    final title = message.notification?.title ?? 'OTP Verification';
+    final body  = message.notification?.body  ?? 'Your verification code has arrived';
+
+    await _local.show(
+      0, // Fixed ID — always replaces the previous OTP notification
       title,
       body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
+          _otpChannel.id,
+          _otpChannel.name,
+          channelDescription: _otpChannel.description,
           importance: Importance.max,
           priority: Priority.max,
-          showWhen: true,
-          icon: '@mipmap/ic_launcher',
-          playSound: true,
-          enableVibration: true,
-          enableLights: true,
-          ticker: 'Vendor Accepted Booking',
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-        ),
-      ),
-      payload: 'vendor_assigned:$bookingId',
-    );
-  }
-
-  /// Show OTP local notification with max priority
-  static Future<void> showOtpNotification(RemoteMessage message) async {
-    RemoteNotification? notification = message.notification;
-    
-    String title = notification?.title ?? 'OTP Verification';
-    String body = notification?.body ?? message.data['otp'] ?? 'Your verification code has arrived';
-    
-    // Show notification with max importance for OTP
-    await _localNotifications.show(
-      0, // Use ID 0 for OTP notifications
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'otp_channel',
-          'OTP Notifications',
-          channelDescription: 'Channel for OTP verification codes',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: true,
-          icon: '@mipmap/ic_launcher',
           playSound: true,
           enableVibration: true,
           enableLights: true,
           ticker: 'OTP Code Received',
+          icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -350,97 +234,149 @@ class NotificationService {
           interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
-      payload: 'otp',
+      payload: _NotifType.otp,
     );
   }
 
-  /// Handle notification clicks
-  static void _handleMessageClick(RemoteMessage message) {
-    String? type = message.data['type'];
-    
-    // Navigate based on type
-    if (type == 'VENDOR_ASSIGNED' || 
-        type == 'vendor_assigned' || 
-        type == 'BOOKING_STATUS_UPDATE' || 
-        type == 'booking_status_update' || 
-        type == 'otp') {
-      try {
-        AppRouter.router.go('/home');
-      } catch (e) {
-        print('Message click navigation error: $e');
-      }
-    }
+  static Future<void> _showBooking(RemoteMessage message) async {
+    final type      = message.data['type'] as String?;
+    final bookingId = message.data['bookingId'] as String?;
+    final title     = message.notification?.title ?? 'Booking Update';
+    final body      = message.notification?.body  ?? 'Your booking has been updated.';
+
+    await _local.show(
+      _notifId(message, prefix: 'booking'),
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _highChannel.id,
+          _highChannel.name,
+          channelDescription: _highChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          enableLights: type == _NotifType.vendorAssigned,
+          ticker: title,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          interruptionLevel: type == _NotifType.vendorAssigned
+              ? InterruptionLevel.timeSensitive
+              : InterruptionLevel.active,
+        ),
+      ),
+      payload: '$type:${bookingId ?? ''}',
+    );
   }
 
-  /// Save FCM token to backend with retry logic
-  static Future<void> _saveFcmTokenToBackend(String token, {int retryCount = 0}) async {
+  static Future<void> _showMarketing(RemoteMessage message) async {
+    final title = message.notification?.title;
+    final body  = message.notification?.body;
+    if (title == null || title.isEmpty) return;
+
+    await _local.show(
+      _notifId(message, prefix: 'mkt'),
+      title,
+      body ?? '',
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _marketingChannel.id,
+          _marketingChannel.name,
+          channelDescription: _marketingChannel.description,
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          playSound: false,
+          enableVibration: false,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: false,
+          presentSound: false,
+        ),
+      ),
+      payload: _NotifType.marketing,
+    );
+  }
+
+  static Future<void> _showGeneric(RemoteMessage message) async {
+    final title = message.notification?.title;
+    final body  = message.notification?.body ?? '';
+    if (title == null || title.isEmpty) return;
+
+    await _local.show(
+      _notifId(message),
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _highChannel.id,
+          _highChannel.name,
+          channelDescription: _highChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: message.data['type'] as String? ?? '',
+    );
+  }
+
+  // ── Init helpers ──────────────────────────────────────────
+
+  static Future<void> _initLocalNotifications() async {
+    const initSettings = InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      ),
+    );
+    await _local.initialize(initSettings, onDidReceiveNotificationResponse: _onLocalTap);
+  }
+
+  static Future<void> _createAndroidChannels() async {
+    final android = _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await android?.createNotificationChannel(_highChannel);
+    await android?.createNotificationChannel(_otpChannel);
+    await android?.createNotificationChannel(_marketingChannel);
+  }
+
+  // ── Token sync ────────────────────────────────────────────
+
+  /// Saves the FCM token to the backend with up to 3 retries.
+  /// userId is derived server-side from the JWT — not sent in body.
+  static Future<void> _saveTokenToBackend(String token, {int attempt = 0}) async {
     try {
-      String? userId = SharedPrefs.getUserId();
-      if (userId == null || userId.isEmpty) {
-        // Retry after 2 seconds if no userId (user might be logging in)
-        if (retryCount < 3) {
-          await Future.delayed(Duration(seconds: 2));
-          await _saveFcmTokenToBackend(token, retryCount: retryCount + 1);
+      final authToken = SharedPrefs.getToken();
+      if (authToken == null || authToken.isEmpty) {
+        // Not logged in yet — retry after a short delay (token refresh on login)
+        if (attempt < 3) {
+          await Future.delayed(Duration(seconds: attempt == 0 ? 2 : 5));
+          await _saveTokenToBackend(token, attempt: attempt + 1);
         }
         return;
       }
 
-      final response = await ApiService.post('/user/update-fcm-token', {
-        'userId': userId,
-        'fcmToken': token,
-        'userType': 'customer',
-      });
-      
-      if (response['success'] == true) {
-        print('✅ FCM Token saved successfully');
-      } else {
-        print('❌ FCM Token save failed: ${response['message']}');
+      await ApiService.post('/fcm/update-token', {'fcmToken': token});
+    } catch (_) {
+      if (attempt < 1) {
+        await Future.delayed(const Duration(seconds: 3));
+        await _saveTokenToBackend(token, attempt: attempt + 1);
       }
-    } catch (e) {
-      print('❌ Error saving FCM token: $e');
-      // Retry once on error
-      if (retryCount < 1) {
-        await Future.delayed(Duration(seconds: 1));
-        await _saveFcmTokenToBackend(token, retryCount: retryCount + 1);
-      }
-    }
-  }
-
-  /// Get current FCM token
-  static String? getFcmToken() {
-    return _fcmToken;
-  }
-  
-  /// Refresh and send FCM token to backend (call after user login/register)
-  static Future<void> refreshAndSendToken() async {
-    try {
-      // Get current or new token
-      String? token = await _firebaseMessaging.getToken();
-      if (token != null) {
-        _fcmToken = token;
-        print('Refreshing FCM Token: $token');
-        await _saveFcmTokenToBackend(token);
-      }
-    } catch (e) {
-      print('Error refreshing token: $e');
-    }
-  }
-
-  /// Subscribe to a topic
-  static Future<void> subscribeToTopic(String topic) async {
-    try {
-      await _firebaseMessaging.subscribeToTopic(topic);
-    } catch (e) {
-      // Silent fail
-    }
-  }
-
-  /// Unsubscribe from a topic
-  static Future<void> unsubscribeFromTopic(String topic) async {
-    try {
-      await _firebaseMessaging.unsubscribeFromTopic(topic);
-    } catch (e) {
-      // Silent fail
     }
   }
 }

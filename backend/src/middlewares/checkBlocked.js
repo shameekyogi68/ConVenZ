@@ -26,37 +26,27 @@ export const checkUserBlocked = async (req, res, next) => {
     }
     
     if (!user) {
-      console.log(`⚠️  User not found in block check | UserID: ${userId} | Phone: ${phone}`);
-      // User not found - allow request to proceed (controller will handle)
       return next();
     }
 
-    // Check if user is blocked
     if (user.isBlocked === true) {
-      console.log(`🚫 BLOCKED USER ATTEMPT | User ID: ${user.user_id} | Name: ${user.name || 'Unknown'} | Phone: ${user.phone}`);
-      console.log(`   Block Reason: ${user.blockReason || 'Not specified'}`);
-      console.log(`   Blocked At: ${user.blockedAt || 'Unknown'}`);
-      
+      console.log(`🚫 BLOCKED_ATTEMPT | User: ${user.user_id} | Reason: ${user.blockReason || 'none'}`);
       return res.status(403).json({
         success: false,
         message: "Your account has been blocked by admin. Please contact support.",
         blocked: true,
         blockReason: user.blockReason || "Your account is currently suspended",
         blockedAt: user.blockedAt,
-        supportContact: "Contact admin for assistance"
+        supportContact: "Contact admin for assistance",
       });
     }
 
-    // User is not blocked, continue
-    console.log(`✅ User ${user.user_id} (${user.phone}) is active (not blocked)`);
     next();
-    
   } catch (error) {
-    console.error('❌ Error in checkUserBlocked middleware:', error);
+    console.error('❌ Error in checkUserBlocked middleware:', error.message);
     return res.status(500).json({
       success: false,
       message: "Error checking user status",
-      error: error.message
     });
   }
 };
@@ -90,8 +80,7 @@ export const blockUser = async (req, res) => {
     user.blockedAt = new Date();
     await user.save();
 
-    console.log(`🚫 USER_BLOCKED | User ID: ${userId} | Name: ${user.name} | Phone: ${user.phone}`);
-    console.log(`   Reason: ${user.blockReason}`);
+    console.log(`🚫 USER_BLOCKED | User: ${user.user_id} | Reason: ${user.blockReason}`);
 
     return res.status(200).json({
       success: true,
@@ -107,12 +96,8 @@ export const blockUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error blocking user:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Error blocking user",
-      error: error.message
-    });
+    console.error('❌ Error blocking user:', error.message);
+    return res.status(500).json({ success: false, message: "Error blocking user" });
   }
 };
 
@@ -145,7 +130,7 @@ export const unblockUser = async (req, res) => {
     user.blockedAt = null;
     await user.save();
 
-    console.log(`✅ USER_UNBLOCKED | User ID: ${userId} | Name: ${user.name} | Phone: ${user.phone}`);
+    console.log(`✅ USER_UNBLOCKED | User: ${user.user_id}`);
 
     return res.status(200).json({
       success: true,
@@ -159,12 +144,8 @@ export const unblockUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error unblocking user:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Error unblocking user",
-      error: error.message
-    });
+    console.error('❌ Error unblocking user:', error.message);
+    return res.status(500).json({ success: false, message: "Error unblocking user" });
   }
 };
 
@@ -197,11 +178,7 @@ export const checkBlockStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error checking block status:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Error checking block status",
-      error: error.message
-    });
+    console.error('❌ Error checking block status:', error.message);
+    return res.status(500).json({ success: false, message: "Error checking block status" });
   }
 };

@@ -1,27 +1,62 @@
 import mongoose from "mongoose";
 
+// Fail fast on queries when the DB is not connected.
+// Without this, Mongoose silently buffers operations and they execute
+// once (if ever) the connection is restored — masking real failures.
+mongoose.set("bufferCommands", false);
+
+// Suppress Mongoose 7 strictQuery deprecation warning
+mongoose.set("strictQuery", false);
+
 const MAX_RETRIES = 5;
-const RETRY_DELAY_MS = 5000;
+const BASE_DELAY_MS = 2000; // doubles each attempt: 2s, 4s, 8s, 16s, 32s
+
+// ── Connection event logging ──────────────────────────────────
+mongoose.connection.on("connected", () =>
+  console.log(`✅ MongoDB connected | DB: ${mongoose.connection.name}`)
+);
+mongoose.connection.on("disconnected", () =>
+  console.warn("⚠️  MongoDB disconnected — waiting for reconnect")
+);
+mongoose.connection.on("reconnected", () =>
+  console.log("✅ MongoDB reconnected")
+);
+mongoose.connection.on("error", (err) =>
+  console.error(`❌ MongoDB connection error: ${err.message}`)
+);
 
 /**
- * Connect to MongoDB with automatic retry on failure.
- * This prevents the server from dying on a single transient network error.
+ * Connect to MongoDB with exponential-backoff retry.
+ * Exits the process only after all retries are exhausted —
+ * transient network blips on startup (e.g. container cold-start)
+ * are handled automatically.
  */
 const connectDB = async (attempt = 1) => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // Fail fast if server is unreachable
+    await mongoose.connect(process.env.MONGODB_URI, {
+      // How long the driver waits to find a primary before throwing
+      serverSelectionTimeoutMS: 10_000,
+      // Connection pool — tuned for a single-instance API server
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      // Abort an in-flight socket operation after 45 s
+      socketTimeoutMS: 45_000,
     });
-    console.log(`✅ MongoDB Connected | Host: ${conn.connection.host} | DB: ${conn.connection.name}`);
+    // "connected" event above handles the success log
   } catch (err) {
-    console.error(`❌ MongoDB Connection Failed (Attempt ${attempt}/${MAX_RETRIES}): ${err.message}`);
+    const delay = BASE_DELAY_MS * 2 ** (attempt - 1);
+    console.error(
+      `❌ MongoDB connection failed (attempt ${attempt}/${MAX_RETRIES}): ${err.message}`
+    );
+
     if (attempt < MAX_RETRIES) {
-      console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000}s...`);
-      setTimeout(() => connectDB(attempt + 1), RETRY_DELAY_MS);
-    } else {
-      console.error("🚨 All MongoDB connection attempts failed. Exiting process.");
-      process.exit(1);
+      console.log(`⏳ Retrying in ${delay / 1000}s…`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return connectDB(attempt + 1);
     }
+
+    console.error("🚨 All MongoDB connection attempts exhausted. Exiting.");
+    process.exit(1);
   }
 };
 

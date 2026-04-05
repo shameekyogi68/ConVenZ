@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../widgets/secondary_button.dart';
 import '../../models/booking.dart';
 import '../../services/booking_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'booking/booking_tracking_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -41,12 +41,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'completed':  return Colors.green;
-      case 'accepted':   return Colors.blue;
+      case 'completed':  return AppColors.accentMint;
+      case 'accepted':   return AppColors.primaryTeal;
       case 'enroute':    return const Color(0xFF6C63FF);
-      case 'cancelled':  return Colors.red;
-      case 'rejected':   return Colors.red.shade300;
-      default:           return Colors.orange; // pending
+      case 'cancelled':  return AppColors.dangerRed;
+      case 'rejected':   return const Color(0xFFE57373);
+      default:           return AppColors.premiumGold; // pending
     }
   }
 
@@ -83,12 +83,35 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'My Bookings',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        automaticallyImplyLeading: false,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'My Bookings',
+              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            if (!_isLoading && _bookings.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_bookings.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ],
         ),
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: Colors.grey.shade100),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal))
@@ -112,12 +135,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final statusColor = _getStatusColor(booking.status);
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BookingTrackingScreen(bookingId: booking.id),
-        ),
-      ),
+      onTap: () => context.push('/bookingTracking', extra: {'bookingId': booking.id}),
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(

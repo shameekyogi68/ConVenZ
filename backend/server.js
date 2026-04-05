@@ -57,12 +57,27 @@ const limiter = rateLimit({
 app.use("/api/", limiter);
 
 // ─────────────────────────────────────────────
-// 🌐 CORS — Allow Mobile Flutter Apps
+// 🌐 CORS — Restrict to known origins
+// Mobile Flutter apps make direct API calls (no browser origin header),
+// so they are unaffected by CORS policy. The restriction only blocks
+// unauthorised browser-based clients.
 // ─────────────────────────────────────────────
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : [];
+
 app.use(cors({
-  origin: "*",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, server-to-server, curl)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS policy: origin ${origin} not allowed`));
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-admin-secret", "x-server-secret", "x-cron-secret"],
+  credentials: true,
 }));
 
 // ─────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/app_colors.dart';
 
 class OtpBox extends StatelessWidget {
   final TextEditingController controller;
@@ -25,7 +26,7 @@ class OtpBox extends StatelessWidget {
         style: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF1F465A),
+          color: AppColors.primaryTeal,
         ),
         onChanged: (value) {
           if (value.isNotEmpty) {
@@ -33,17 +34,21 @@ class OtpBox extends StatelessWidget {
           }
         },
         decoration: InputDecoration(
-          counterText: "",
+          counterText: '',
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.all(16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
-            borderSide: const BorderSide(color: Color(0xFF1F465A), width: 1.2),
+            borderSide: const BorderSide(color: AppColors.primaryTeal, width: 1.2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide(color: AppColors.primaryTeal.withValues(alpha: 0.5), width: 1.2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
-            borderSide: const BorderSide(color: Color(0xFF6AACBF), width: 1.4),
+            borderSide: const BorderSide(color: AppColors.accentMint, width: 2),
           ),
         ),
       ),

@@ -8,17 +8,15 @@ class ApiService {
   static String get baseUrl => AppConstants.userBaseUrl;
 
   // -----------------------
-  // POST REQUEST
+  // POST REQUEST (absolute URL — used by services with a different base)
   // -----------------------
-  static Future<Map<String, dynamic>> post(
-      String endpoint, Map<String, dynamic> data) async {
-    final String url = "$baseUrl$endpoint";
+  static Future<Map<String, dynamic>> postUrl(
+      String absoluteUrl, Map<String, dynamic> data) async {
     final String? token = SharedPrefs.getToken();
-
     try {
       final response = await http
           .post(
-            Uri.parse(url),
+            Uri.parse(absoluteUrl),
             headers: {
               "Content-Type": "application/json",
               if (token != null) "Authorization": "Bearer $token",
@@ -26,47 +24,59 @@ class ApiService {
             body: jsonEncode(data),
           )
           .timeout(const Duration(seconds: 30));
-
       return _handleResponse(response);
     } catch (e) {
-      String errorStr = e.toString();
-      if (errorStr.contains('SocketException')) {
-        return {"success": false, "message": "Looks like you are offline. Please check your internet connection."};
-      } else if (errorStr.contains('TimeoutException')) {
-        return {"success": false, "message": "The server is taking too long to respond. Please try again later."};
-      }
-      return {"success": false, "message": "A connection error occurred. Please try again."};
+      return _handleException(e);
     }
   }
 
   // -----------------------
-  // GET REQUEST
+  // GET REQUEST (absolute URL — used by services with a different base)
   // -----------------------
-  static Future<Map<String, dynamic>> get(String endpoint) async {
-    final String url = "$baseUrl$endpoint";
+  static Future<Map<String, dynamic>> getUrl(String absoluteUrl) async {
     final String? token = SharedPrefs.getToken();
-
     try {
       final response = await http
           .get(
-            Uri.parse(url),
+            Uri.parse(absoluteUrl),
             headers: {
               "Content-Type": "application/json",
               if (token != null) "Authorization": "Bearer $token",
             },
           )
           .timeout(const Duration(seconds: 30));
-
       return _handleResponse(response);
     } catch (e) {
-      String errorStr = e.toString();
-      if (errorStr.contains('SocketException')) {
-        return {"success": false, "message": "Looks like you are offline. Please check your internet connection."};
-      } else if (errorStr.contains('TimeoutException')) {
-        return {"success": false, "message": "The server is taking too long to respond. Please try again later."};
-      }
-      return {"success": false, "message": "A connection error occurred. Please try again."};
+      return _handleException(e);
     }
+  }
+
+  // -----------------------
+  // POST REQUEST
+  // -----------------------
+  static Future<Map<String, dynamic>> post(
+      String endpoint, Map<String, dynamic> data) async {
+    return postUrl("$baseUrl$endpoint", data);
+  }
+
+  // -----------------------
+  // GET REQUEST
+  // -----------------------
+  static Future<Map<String, dynamic>> get(String endpoint) async {
+    return getUrl("$baseUrl$endpoint");
+  }
+
+  // -----------------------
+  // EXCEPTION HANDLER (shared)
+  // -----------------------
+  static Map<String, dynamic> _handleException(Object e) {
+    final errorStr = e.toString();
+    if (errorStr.contains('SocketException')) {
+      return {"success": false, "message": "Looks like you are offline. Please check your internet connection."};
+    } else if (errorStr.contains('TimeoutException')) {
+      return {"success": false, "message": "The server is taking too long to respond. Please try again later."};
+    }
+    return {"success": false, "message": "A connection error occurred. Please try again."};
   }
 
   // -----------------------

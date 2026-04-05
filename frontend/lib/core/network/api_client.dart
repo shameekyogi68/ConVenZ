@@ -31,11 +31,9 @@ class ApiClient {
           return handler.next(response);
         },
         onError: (DioException e, handler) async {
-          // Centralized error handling: If 401 (Token Expired), clear data and logout
           if (e.response?.statusCode == 401) {
             await SharedPrefs.clear();
             AppRouter.router.go('/welcomeCarousel');
-            print('🚨 TOKEN_EXPIRED: User logged out automatically.');
           }
           return handler.next(e);
         },

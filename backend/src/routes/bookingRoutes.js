@@ -12,12 +12,14 @@ const router = express.Router();
 
 // 🔒 SERVER-TO-SERVER AUTH MIDDLEWARE
 const serverProtect = (req, res, next) => {
-  const serverSecret = req.headers['x-server-secret'];
-  if (serverSecret === process.env.SERVER_SECRET || serverSecret === 'convenz_backend_secure_mesh') {
-    next();
-  } else {
-    res.status(401).json({ success: false, message: "Unauthorized: Server-to-Server access required" });
+  if (!process.env.SERVER_SECRET) {
+    return res.status(500).json({ success: false, message: "Server misconfiguration: SERVER_SECRET not set" });
   }
+  const serverSecret = req.headers['x-server-secret'];
+  if (serverSecret && serverSecret === process.env.SERVER_SECRET) {
+    return next();
+  }
+  return res.status(401).json({ success: false, message: "Unauthorized: Server-to-Server access required" });
 };
 
 /* ------------------------------------------

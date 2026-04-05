@@ -1,9 +1,17 @@
 import axios from "axios";
+import crypto from "crypto";
 import User from "../models/userModel.js";
 import Subscription from "../models/subscriptionModel.js";
 import Plan from "../models/planModel.js";
 import { sendNotification, sendOtpNotification } from "../utils/sendNotification.js";
 import { generateToken } from "../middlewares/authMiddleware.js";
+
+/**
+ * Hash a numeric OTP using HMAC-SHA256 so it is never stored in plaintext.
+ * Uses JWT_SECRET (already required at startup) as the HMAC key.
+ */
+const hashOtp = (otp) =>
+  crypto.createHmac("sha256", process.env.JWT_SECRET).update(String(otp)).digest("hex");
 
 /**
  * ✨ ELITE ASYNC HANDLER WRAPPER
@@ -23,14 +31,17 @@ export const registerUser = asyncHandler(async (req, res) => {
   const otp = Math.floor(1000 + Math.random() * 9000);
   const otpExpiryTime = new Date(Date.now() + 5 * 60000); // 5 mins in future
   
-  let user = await User.findOne({ phone });
+  // +otp +otpExpiry needed because those fields have select:false in the schema
+  let user = await User.findOne({ phone }).select('+otp +otpExpiry');
   let isNewUser = false;
 
+  const hashedOtp = hashOtp(otp);
+
   if (!user) {
-    user = await User.create({ phone, fcmToken, otp, otpExpiry: otpExpiryTime });
+    user = await User.create({ phone, fcmToken, otp: hashedOtp, otpExpiry: otpExpiryTime });
     isNewUser = true;
   } else {
-    user.otp = otp;
+    user.otp = hashedOtp;
     user.otpExpiry = otpExpiryTime;
     if (fcmToken && fcmToken !== user.fcmToken) {
       user.fcmToken = fcmToken;
@@ -38,7 +49,8 @@ export const registerUser = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  console.log(`✅ OTP_GENERATED | User: ${user.user_id} | Phone: ${phone} | OTP: ${otp}`);
+  const maskedPhone = String(phone).replace(/(\d{2})\d+(\d{2})/, '$1****$2');
+  console.log(`✅ OTP_GENERATED | User: ${user.user_id} | Phone: ${maskedPhone}`);
   
   // Send push notification with OTP (Fail-safe)
   const tokenToUse = fcmToken || user.fcmToken;
@@ -59,7 +71,8 @@ export const registerUser = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { phone, otp } = req.body;
-  const user = await User.findOne({ phone });
+  // +otp +otpExpiry needed because those fields have select:false in the schema
+  const user = await User.findOne({ phone }).select('+otp +otpExpiry');
 
   if (!user) {
     res.status(404);
@@ -79,7 +92,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     throw new Error("OTP expired");
   }
 
-  if (Number(otp) !== user.otp) {
+  if (hashOtp(otp) !== user.otp) {
     res.status(400);
     throw new Error("Invalid OTP");
   }
@@ -155,11 +168,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     throw new Error("User not found");
   }
 
-  return res.status(200).json({ 
-    success: true, 
-    data: user,
-    user: user // Compatibility
-  });
+  return res.status(200).json({ success: true, data: user });
 });
 
 /**
@@ -167,11 +176,12 @@ export const getUserProfile = asyncHandler(async (req, res) => {
  */
 export const updateUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const { name, phone, address } = req.body;
+  // phone intentionally excluded — changing it requires OTP re-verification
+  const { name, address } = req.body;
 
   const updatedUser = await User.findOneAndUpdate(
     { user_id: userId },
-    { name, phone, address },
+    { name, address },
     { new: true }
   );
 
@@ -270,5 +280,5 @@ export const getPlanById = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Plan not found");
   }
-  return res.status(200).json(plan);
+  return res.status(200).json({ success: true, data: plan });
 });

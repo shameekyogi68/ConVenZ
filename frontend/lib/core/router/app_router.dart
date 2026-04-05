@@ -16,6 +16,7 @@ import '../../screens/home/booking/vendor_found_screen.dart';
 import '../../screens/home/booking/vendor_not_found_screen.dart';
 import '../../screens/home/booking/service_details_screen.dart';
 import '../../screens/home/booking/map_screen.dart';
+import '../../screens/home/booking/booking_tracking_screen.dart';
 import '../../screens/blocked_user_screen.dart';
 
 class AppRouter {
@@ -46,7 +47,11 @@ class AppRouter {
       // ── Main App ──
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          final tab = (args?['tab'] as int?) ?? 0;
+          return HomeScreen(initialTab: tab);
+        },
       ),
 
       // ── Booking Flow (Post-Match) ──
@@ -138,12 +143,12 @@ class AppRouter {
           final args = state.extra as Map<String, dynamic>;
           return VendorFoundScreen(
             bookingId: args['bookingId'] as String,
-            vendorName: args['vendorName'] as String,
-            vendorPhone: args['vendorPhone'] as String,
-            vendorAddress: args['vendorAddress'] as String,
-            service: args['service'] as String,
-            date: args['date'] as String,
-            time: args['time'] as String,
+            vendorName: args['vendorName'] as String? ?? 'Vendor',
+            vendorPhone: args['vendorPhone'] as String? ?? '',
+            vendorAddress: args['vendorAddress'] as String? ?? '',
+            service: args['service'] as String? ?? '',
+            date: args['date'] as String? ?? '',
+            time: args['time'] as String? ?? '',
           );
         },
       ),
@@ -154,6 +159,15 @@ class AppRouter {
           return VendorNotFoundScreen(
             bookingId: args['bookingId'] as String,
             serviceName: args['serviceName'] as String,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/bookingTracking',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          return BookingTrackingScreen(
+            bookingId: args['bookingId'] as String,
           );
         },
       ),

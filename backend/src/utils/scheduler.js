@@ -39,18 +39,24 @@ const MARKETING_MESSAGES = [
 
 let lastRunAt = null;
 
-const getMessageForHour = () => {
-  // Get time in IST (UTC +5:30) regardless of where the server is hosted
-  const now = new Date();
-  let utcHour = now.getUTCHours();
-  let utcMinutes = now.getUTCMinutes();
-  
-  let istHour = utcHour + 5;
-  if (utcMinutes + 30 >= 60) {
-    istHour += 1;
-  }
-  istHour = istHour % 24;
+// Quiet hours: no marketing pushes between 10PM (22:00) and 7AM (07:00) IST
+const QUIET_HOUR_START = 22;
+const QUIET_HOUR_END = 7;
 
+const getIstHour = () => {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcMinutes = now.getUTCMinutes();
+  let istHour = utcHour + 5;
+  if (utcMinutes + 30 >= 60) istHour += 1;
+  return istHour % 24;
+};
+
+const isQuietHour = (istHour) => {
+  return istHour >= QUIET_HOUR_START || istHour < QUIET_HOUR_END;
+};
+
+const getMessageForHour = (istHour) => {
   return MARKETING_MESSAGES[istHour];
 };
 
@@ -66,14 +72,20 @@ export const triggerHourlyNudge = async (isManual = false) => {
   }
 
   const startTime = now;
-  const currentHour = new Date().getHours();
-  console.log(`\n🕒 [SCHEDULER] Running for Hour ${currentHour}:00 | ${new Date().toISOString()}`);
+  const currentHour = getIstHour();
+  console.log(`\n🕒 [SCHEDULER] Running for IST Hour ${currentHour}:00 | ${new Date().toISOString()}`);
+
+  // 🔕 Quiet Hours: skip marketing between 10PM and 7AM IST
+  if (!isManual && isQuietHour(currentHour)) {
+    console.log(`🔕 [SCHEDULER] Quiet hours (${QUIET_HOUR_START}:00–${QUIET_HOUR_END}:00 IST). Skipping nudge.`);
+    return { skipped: true, reason: "QUIET_HOURS" };
+  }
 
   try {
     // 1. Fetch only eligible users with valid, recent tokens
     // We filter for length > 40 to ensure it is not a dummy or partial token
     const users = await User.find({
-      fcmToken: { $ne: null, $exists: true, $ne: "" },
+      fcmToken: { $nin: [null, ""], $exists: true },
       isBlocked: { $ne: true },
     }).select("fcmToken").lean();
 
@@ -86,8 +98,8 @@ export const triggerHourlyNudge = async (isManual = false) => {
       return { sent: 0, total: users.length, skipped: true };
     }
 
-    const { title, body } = getMessageForHour();
-    const data = { type: "MARKETING_NUDGE", hour: String(currentHour) };
+    const { title, body } = getMessageForHour(currentHour);
+    const data = { type: "MARKETING_NUDGE", hour: String(currentHour), clickAction: "FLUTTER_NOTIFICATION_CLICK" };
 
     console.log(`📡 [SCHEDULER] Dispatching "${title}" to ${tokens.length} users...`);
 

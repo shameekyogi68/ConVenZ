@@ -3,15 +3,13 @@ import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../widgets/text_input.dart';
 import '../../widgets/primary_button.dart';
-import '../../widgets/secondary_button.dart';
 import '../../services/profile_service.dart';
 import '../../models/profile_model.dart';
 import '../../utils/shared_prefs.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
-  final PageController controller;
-  const CustomerProfileScreen({super.key, required this.controller});
+  const CustomerProfileScreen({super.key});
 
   @override
   State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
@@ -49,7 +47,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     // Fallback: Populate from SharedPrefs first so UI is never fully empty while loading
     nameController.text = SharedPrefs.getUserName() ?? SharedPrefs.getPhone() ?? 'User';
     phoneController.text = SharedPrefs.getPhone() ?? '';
-    addressController.text = 'Fetching address...';
+    addressController.text = '';
 
     try {
       final response = await ProfileService.getProfile();
@@ -61,13 +59,16 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           profile = p;
           nameController.text = p.name.isNotEmpty ? p.name : nameController.text;
           phoneController.text = p.phone.isNotEmpty ? p.phone : phoneController.text;
-          addressController.text = p.address.isNotEmpty && p.address != 'No address set' ? p.address : addressController.text;
+          addressController.text = p.address.isNotEmpty && p.address != 'No address set' ? p.address : 'Not set';
         });
       } else {
         setState(() => profile = null);
       }
     } catch (_) {
-      if (mounted) setState(() => profile = null);
+      if (mounted) {
+        addressController.text = 'Not set';
+        setState(() => profile = null);
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -143,6 +144,43 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Profile',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          if (!isLoading)
+            IconButton(
+              icon: Icon(
+                isEditing ? Icons.close_rounded : Icons.edit_rounded,
+                color: AppColors.primaryTeal,
+                size: 22,
+              ),
+              onPressed: () {
+                setState(() {
+                  if (isEditing) {
+                    // Cancel: restore saved name
+                    nameController.text = profile?.name ?? SharedPrefs.getUserName() ?? '';
+                    isEditing = false;
+                    FocusScope.of(context).unfocus();
+                  } else {
+                    isEditing = true;
+                    Future.microtask(() => nameFocusNode.requestFocus());
+                  }
+                });
+              },
+            ),
+        ],
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primaryTeal))
           : SafeArea(
@@ -150,59 +188,66 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 32),
+
+                    // Avatar
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 20, spreadRadius: 5),
+                          BoxShadow(
+                            color: AppColors.primaryTeal.withValues(alpha: 0.15),
+                            blurRadius: 24,
+                            spreadRadius: 4,
+                          ),
                         ],
                         border: Border.all(color: Colors.white, width: 4),
                       ),
-                      child: ClipOval(child: Image.asset('assets/images/avatar.png', width: 130)),
+                      child: ClipOval(child: Image.asset('assets/images/avatar.png', width: 110)),
                     ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
-                    const SizedBox(height: 20),
 
-                    const Text(
-                      'Customer Profile',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryTeal,
-                        letterSpacing: -0.5,
+                    const SizedBox(height: 12),
+
+                    // Display name below avatar
+                    Text(
+                      nameController.text.isNotEmpty ? nameController.text : 'Your Name',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
                       ),
-                    ).animate().fade(delay: 200.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
+                    ).animate().fade(delay: 150.ms).slideY(begin: 0.1, end: 0, duration: 350.ms),
 
-                    const SizedBox(height: 40),
+                    Text(
+                      phoneController.text.isNotEmpty ? '+91 ${phoneController.text}' : '',
+                      style: const TextStyle(fontSize: 13, color: AppColors.darkGrey),
+                    ).animate().fade(delay: 200.ms),
 
-                    // Name field — editable
+                    const SizedBox(height: 36),
+
+                    // ── Fields ──
                     TextField(
                       controller: nameController,
                       focusNode: nameFocusNode,
                       readOnly: !isEditing,
-                      onTap: () {
-                        setState(() => isEditing = true);
-                        nameFocusNode.requestFocus();
-                      },
                       style: TextStyle(
                         color: isEditing ? AppColors.primaryTeal : AppColors.darkGrey,
-                        fontSize: 16,
+                        fontSize: 15,
                       ),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.person, color: AppColors.primaryTeal),
-                        labelText: 'Name',
-                        labelStyle: TextStyle(
-                          color: isEditing ? AppColors.primaryTeal : AppColors.darkGrey,
-                        ),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primaryTeal),
+                        labelText: 'Full Name',
+                        labelStyle: const TextStyle(color: AppColors.darkGrey),
                         filled: true,
                         fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(100),
-                          borderSide: const BorderSide(color: AppColors.primaryTeal),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(100),
-                          borderSide: const BorderSide(color: AppColors.primaryTeal),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(100),
@@ -211,40 +256,55 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Phone — read-only
                     AbsorbPointer(
                       child: TextInput(
                         controller: phoneController,
                         labelText: 'Phone Number',
-                        icon: Icons.phone_android,
+                        icon: Icons.phone_android_rounded,
                         prefixText: '+91 ',
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     // Address — auto-detected, read-only
                     AbsorbPointer(
                       child: TextField(
                         controller: addressController,
-                        maxLines: 3,
+                        maxLines: 2,
                         readOnly: true,
+                        style: const TextStyle(fontSize: 14, color: AppColors.darkGrey),
                         decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.location_on, color: AppColors.primaryTeal),
-                          labelText: 'Address',
+                          prefixIcon: const Padding(
+                            padding: EdgeInsets.only(top: 14),
+                            child: Icon(Icons.location_on_outlined, color: AppColors.primaryTeal),
+                          ),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 50, minHeight: 0),
+                          labelText: 'Detected Address',
+                          labelStyle: const TextStyle(color: AppColors.darkGrey),
                           filled: true,
                           fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
                             borderSide: const BorderSide(color: AppColors.primaryTeal),
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 28),
 
                     // Save button — only while editing
                     if (isEditing)
@@ -253,15 +313,57 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                           isSaving
                               ? const CircularProgressIndicator(color: AppColors.primaryTeal)
                               : PrimaryButton(text: 'Save Changes', onPressed: _saveProfile),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                         ],
-                      ).animate().fade().slideY(begin: 0.2, end: 0, duration: 300.ms),
+                      ).animate().fade().slideY(begin: 0.15, end: 0, duration: 250.ms),
 
-                    SecondaryButton(text: 'Log Out', onPressed: _logout)
-                        .animate().fade(delay: 500.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
+                    // ── Danger Zone ──
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerRed.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.dangerRed.withValues(alpha: 0.15)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Account',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.darkGrey,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: _logout,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.logout_rounded, color: AppColors.dangerRed, size: 20),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Log Out',
+                                  style: TextStyle(
+                                    color: AppColors.dangerRed,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Icon(Icons.arrow_forward_ios_rounded, color: AppColors.dangerRed.withValues(alpha: 0.5), size: 14),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fade(delay: 400.ms).slideY(begin: 0.1, end: 0, duration: 400.ms),
 
                     const SizedBox(height: 40),
-                  ].animate(interval: 50.ms).fade(duration: 400.ms),
+                  ],
                 ),
               ),
             ),

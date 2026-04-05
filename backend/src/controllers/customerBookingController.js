@@ -52,7 +52,7 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
 
   // Notify External Servers (Non-blocking)
   axios.post(externalVendorUrl, payload, { timeout: 10000 }).catch(() => {});
-  axios.post(webserverVendorUrl, payload, { headers: { 'x-customer-secret': '7c3a762645e64b89d513a2a2dde29605a9595d368826a762918fbb8e04412824' }, timeout: 10000 }).catch(() => {});
+  axios.post(webserverVendorUrl, payload, { headers: { 'x-customer-secret': process.env.WEBSERVER_VENDOR_SECRET || '' }, timeout: 10000 }).catch(() => {});
 
   // Find Internal Vendor
   const vendorMatch = await findBestVendor(selectedService, location.latitude, location.longitude, 50);
@@ -103,10 +103,15 @@ export const getUserBookings = asyncHandler(async (req, res) => {
    🔍 GET SINGLE BOOKING DETAILS
 ------------------------------------------------------------ */
 export const getBookingDetails = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
   const booking = await Booking.findOne({ booking_id: req.params.bookingId });
   if (!booking) {
     res.status(404);
     throw new Error("Booking not found");
+  }
+  if (booking.userId !== userId) {
+    res.status(403);
+    throw new Error("Access denied");
   }
   return res.status(200).json({ success: true, data: booking });
 });
@@ -154,6 +159,7 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
   booking.status = status;
   if (status === "accepted" && otpStart) booking.otpStart = otpStart;
   if (vendorId) booking.vendorId = vendorId;
+  if (status === "rejected" && rejectionReason) booking.rejectionReason = rejectionReason;
   await booking.save();
 
   // Notify customer
@@ -163,9 +169,9 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     let body = `Your booking status is now: ${status}`;
     if (status === "accepted") {
       title = "✅ Booking Accepted!";
-      body = `Your ${booking.selectedService} request was accepted. OTP: ${otpStart}`;
+      body = `Your ${booking.selectedService} request was accepted. Open the app to view your OTP.`;
     }
-    sendNotification(customer.fcmToken, title, body, { type: "STATUS_UPDATE", bookingId, status }).catch(() => {});
+    sendNotification(customer.fcmToken, title, body, { type: "BOOKING_STATUS_UPDATE", bookingId, status }).catch(() => {});
   }
 
   return res.status(200).json({ success: true, message: "Status updated", data: booking });

@@ -8,18 +8,19 @@ import Joi from 'joi';
  */
 export const validate = (schema) => (req, res, next) => {
   const { error } = schema.validate(req.body, { abortEarly: false });
-  
+
   if (error) {
     const errorDetails = error.details.map(detail => detail.message).join(', ');
-    console.log(`❌ VALIDATION_FAILED | ${req.path} | Errors: ${errorDetails}`);
-    
+    // Log count and path only — never log user-supplied values to avoid log injection
+    console.log(`❌ VALIDATION_FAILED | ${req.method} ${req.path} | ${error.details.length} error(s)`);
+
     return res.status(400).json({
       success: false,
-      message: "Validation Error",
-      errors: errorDetails
+      message: "Validation failed",
+      errors: errorDetails,
     });
   }
-  
+
   next();
 };
 
@@ -43,7 +44,6 @@ export const authSchemas = {
 export const userSchemas = {
   updateProfile: Joi.object({
     name: Joi.string().min(2).max(50),
-    phone: Joi.number(),
     gender: Joi.string().valid('Male', 'Female', 'Other'),
     address: Joi.string().allow('', null)
   }),
@@ -68,5 +68,23 @@ export const bookingSchemas = {
       longitude: Joi.number().required(),
       address: Joi.string().required()
     }).required()
-  })
+  }),
+  statusUpdate: Joi.object({
+    bookingId: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
+    status: Joi.string()
+      .valid('accepted', 'rejected', 'enroute', 'completed', 'cancelled')
+      .required(),
+    vendorId: Joi.alternatives().try(Joi.number(), Joi.string()).optional(),
+    otpStart: Joi.number().integer().min(1000).max(9999).optional(),
+    rejectionReason: Joi.string().max(500).optional(),
+  }),
+};
+
+/**
+ * 🔔 NOTIFICATION VALIDATION SCHEMAS
+ */
+export const notificationSchemas = {
+  updateFcmToken: Joi.object({
+    fcmToken: Joi.string().min(10).required(),
+  }),
 };

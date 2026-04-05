@@ -12,10 +12,10 @@ const subscriptionSchema = new mongoose.Schema(
       ref: "Plan", // Links to planModel.js
       required: true
     },
-    currentPack: { type: String, required: true },
-    price: { type: Number, required: true },
+    currentPack: { type: String, required: true, trim: true, maxlength: 100 },
+    price: { type: Number, required: true, min: 0 },
 
-    startDate: { type: Date, default: Date.now },
+    startDate: { type: Date, default: Date.now, immutable: true },
     expiryDate: { type: Date, required: true },
 
     status: {
@@ -29,7 +29,7 @@ const subscriptionSchema = new mongoose.Schema(
 
 // 🚀 ELITE DATABASE ARCHITECTURE INDEXES
 subscriptionSchema.index({ userId: 1, status: 1 }); // Ultra-fast lookup for active user subscriptions
-subscriptionSchema.index({ expiryDate: 1 }, { expireAfterSeconds: 0 }); // Clean up expired subs if needed, or fast expiry sorting
+subscriptionSchema.index({ expiryDate: 1 }); // Fast expiry sorting and range queries
 
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
 export default Subscription;

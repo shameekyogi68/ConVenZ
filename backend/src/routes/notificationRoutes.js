@@ -24,29 +24,22 @@ router.post("/send-multiple", sendNotificationToMultipleUsers);
 // Send notification to a topic
 router.post("/send-topic", sendNotificationToTopic);
 
-// Test manual trigger for hourly nudge (Admin or External Cron Only)
+// Manual trigger for hourly nudge (CRON_SECRET required in production)
 router.get("/test-hourly-nudge", async (req, res) => {
   try {
-    // 🛡️ Security Check (Optional but recommended for production)
-    // You can set CRON_SECRET in your Render environment variables
     const secret = req.query.secret || req.headers['x-cron-secret'];
     if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-      console.warn(`🛡️ [API] Unauthorized nudge attempt blocked | IP: ${req.ip}`);
+      console.warn(`🛡️ [API] Unauthorized nudge attempt | IP: ${req.ip}`);
       return res.status(401).json({ success: false, message: "Unauthorized credentials" });
     }
 
     const { triggerHourlyNudge } = await import("../utils/scheduler.js");
-    console.log(`📡 [API] External nudge request received | Source: ${req.get('User-Agent')}`);
-    const result = await triggerHourlyNudge(true); // Pass true to bypass 45-min lock
-    
-    res.status(202).json({ 
-      success: true, 
-      message: "External trigger successful",
-      stats: result
-    });
+    const result = await triggerHourlyNudge(true);
+
+    return res.status(202).json({ success: true, message: "Nudge triggered", stats: result });
   } catch (err) {
     console.error(`❌ [API] External nudge failed: ${err.message}`);
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: "Failed to trigger nudge" });
   }
 });
 
