@@ -1,12 +1,4 @@
 class SubscriptionPlan {
-  final String? id;
-  final String name;
-  final int price;
-  final String duration;
-  final List<String> features;
-  final bool active;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
 
   SubscriptionPlan({
     this.id,
@@ -32,6 +24,14 @@ class SubscriptionPlan {
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : null,
     );
   }
+  final String? id;
+  final String name;
+  final int price;
+  final String duration;
+  final List<String> features;
+  final bool active;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   // Convert to JSON
   Map<String, dynamic> toJson() {

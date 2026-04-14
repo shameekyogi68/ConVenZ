@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../config/app_colors.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../config/app_colors.dart';
 
 class PopularServicesList extends StatelessWidget {
   const PopularServicesList({super.key});
@@ -17,7 +18,7 @@ class PopularServicesList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Popular Near You", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+        const Text('Popular Near You', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
             .animate().fade().slideX(begin: -0.1, end: 0, duration: 400.ms, delay: 200.ms),
         const SizedBox(height: 15),
         SizedBox(

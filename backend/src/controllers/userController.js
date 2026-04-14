@@ -1,10 +1,11 @@
 import axios from "axios";
 import crypto from "crypto";
 import User from "../models/userModel.js";
-import Subscription from "../models/subscriptionModel.js";
 import Plan from "../models/planModel.js";
 import { sendNotification, sendOtpNotification } from "../utils/sendNotification.js";
 import { generateToken } from "../middlewares/authMiddleware.js";
+
+import asyncHandler from "../utils/asyncHandler.js";
 
 /**
  * Hash a numeric OTP using HMAC-SHA256 so it is never stored in plaintext.
@@ -13,36 +14,27 @@ import { generateToken } from "../middlewares/authMiddleware.js";
 const hashOtp = (otp) =>
   crypto.createHmac("sha256", process.env.JWT_SECRET).update(String(otp)).digest("hex");
 
-/**
- * ✨ ELITE ASYNC HANDLER WRAPPER
- * Standardizes async error catching and passes to global error middleware.
- */
-const asyncHandler = fn => (req, res, next) => {
-  return Promise.resolve(fn(req, res, next)).catch(next);
-};
-
 /* ------------------------------------------------------------
    📲 REGISTER USER (Send OTP)
 ------------------------------------------------------------ */
 export const registerUser = asyncHandler(async (req, res) => {
   const { phone, fcmToken } = req.body;
   
-  // Generate random 4-digit OTP
-  const otp = Math.floor(1000 + Math.random() * 9000);
+  // Generate secure random 4-digit OTP
+  const otp = crypto.randomInt(1000, 10000);
   const otpExpiryTime = new Date(Date.now() + 5 * 60000); // 5 mins in future
   
-  // +otp +otpExpiry needed because those fields have select:false in the schema
-  let user = await User.findOne({ phone }).select('+otp +otpExpiry');
-  let isNewUser = false;
+  // +otp +otpExpiry +otpAttempts needed because those fields have select:false in the schema
+  let user = await User.findOne({ phone }).select('+otp +otpExpiry +otpAttempts');
 
   const hashedOtp = hashOtp(otp);
 
   if (!user) {
     user = await User.create({ phone, fcmToken, otp: hashedOtp, otpExpiry: otpExpiryTime });
-    isNewUser = true;
   } else {
     user.otp = hashedOtp;
     user.otpExpiry = otpExpiryTime;
+    user.otpAttempts = 0; // Reset attempts on new OTP request
     if (fcmToken && fcmToken !== user.fcmToken) {
       user.fcmToken = fcmToken;
     }
@@ -71,8 +63,8 @@ export const registerUser = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { phone, otp } = req.body;
-  // +otp +otpExpiry needed because those fields have select:false in the schema
-  const user = await User.findOne({ phone }).select('+otp +otpExpiry');
+  // +otp +otpExpiry +otpAttempts needed because those fields have select:false in the schema
+  const user = await User.findOne({ phone }).select('+otp +otpExpiry +otpAttempts');
 
   if (!user) {
     res.status(404);
@@ -87,12 +79,20 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   if (Date.now() > user.otpExpiry.getTime()) {
     user.otp = null;
     user.otpExpiry = null;
+    user.otpAttempts = 0;
     await user.save();
     res.status(400);
     throw new Error("OTP expired");
   }
 
+  if (user.otpAttempts >= 5) {
+    res.status(429);
+    throw new Error("Too many OTP attempts. Please request a new OTP.");
+  }
+
   if (hashOtp(otp) !== user.otp) {
+    user.otpAttempts += 1;
+    await user.save();
     res.status(400);
     throw new Error("Invalid OTP");
   }
@@ -100,9 +100,10 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   // Clear OTP and login
   user.otp = null;
   user.otpExpiry = null;
+  user.otpAttempts = 0;
   await user.save();
 
-  const token = generateToken(user.user_id);
+  const token = generateToken(String(user.user_id), user.tokenVersion);
   const isNewUser = !user.name && !user.gender;
 
   // Welcome notification (Non-blocking)
@@ -152,7 +153,14 @@ export const updateUserDetails = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Profile updated successfully",
-    user
+    user: {
+      user_id: user.user_id,
+      name: user.name,
+      phone: user.phone,
+      gender: user.gender,
+      address: user.address,
+      location: user.location
+    }
   });
 });
 
@@ -161,7 +169,8 @@ export const updateUserDetails = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const getUserProfile = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const user = await User.findOne({ user_id: userId });
+  const user = await User.findOne({ user_id: userId })
+    .select("user_id name phone gender address location isOnline subscription createdAt");
 
   if (!user) {
     res.status(404);
@@ -183,7 +192,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     { user_id: userId },
     { name, address },
     { new: true }
-  );
+  ).select("user_id name phone gender address location isOnline subscription createdAt");
 
   if (!updatedUser) {
     res.status(404);
@@ -196,7 +205,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 /* ------------------------------------------------------------
    📍 UPDATE LOCATION (With Geocoding)
 ------------------------------------------------------------ */
-export const updateVendorLocation = asyncHandler(async (req, res) => {
+export const updateUserLocation = asyncHandler(async (req, res) => {
   const { latitude, longitude, address: providedAddress } = req.body;
   const userId = req.user.user_id;
 
@@ -217,7 +226,7 @@ export const updateVendorLocation = asyncHandler(async (req, res) => {
       if (response.data.results.length > 0) {
         address = response.data.results[0].formatted;
       }
-    } catch (err) {
+    } catch {
       console.warn("⚠️ Geocoding failed, using coordinates only.");
     }
   }
@@ -235,7 +244,13 @@ export const updateVendorLocation = asyncHandler(async (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Location updated successfully",
-    user,
+    user: {
+      user_id: user.user_id,
+      name: user.name,
+      phone: user.phone,
+      address: user.address,
+      location: user.location
+    },
     location: { latitude, longitude, address }
   });
 });

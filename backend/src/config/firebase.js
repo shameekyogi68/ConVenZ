@@ -30,6 +30,8 @@ const initializeFirebase = () => {
   } catch (error) {
     const source = process.env.FIREBASE_CONFIG_JSON ? "Env JSON" : (process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "./firebase-service-account.json");
     console.error(`❌ FIREBASE_INIT_FAILED | Error: ${error.message} | Source: ${source}`);
+    console.warn(`⚠️  Firebase is NOT initialized. Push notifications will fail. Server will continue running.`);
+    // Do not exit the process, so the Express server can still bind and serve API health checks
   }
 
   return admin;

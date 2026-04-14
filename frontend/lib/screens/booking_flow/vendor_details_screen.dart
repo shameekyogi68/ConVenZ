@@ -6,9 +6,9 @@ import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
 
 class VendorDetailsScreen extends StatelessWidget {
-  final Booking booking;
 
   const VendorDetailsScreen({super.key, required this.booking});
+  final Booking booking;
 
   @override
   Widget build(BuildContext context) {
@@ -181,8 +181,8 @@ class VendorDetailsScreen extends StatelessWidget {
 }
 
 class _InfoRow {
+  const _InfoRow({required this.icon, required this.label, required this.value});
   final IconData icon;
   final String label;
   final String value;
-  const _InfoRow({required this.icon, required this.label, required this.value});
 }

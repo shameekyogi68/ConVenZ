@@ -6,14 +6,14 @@ import '../../../widgets/primary_button.dart';
 import '../../../widgets/secondary_button.dart';
 
 class VendorNotFoundScreen extends StatelessWidget {
-  final String bookingId;
-  final String serviceName;
 
   const VendorNotFoundScreen({
     super.key,
     required this.bookingId,
     required this.serviceName,
   });
+  final String bookingId;
+  final String serviceName;
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'mobile_number_screen.dart';
+import 'onboarding_complete_screen.dart';
 import 'otp_screen.dart';
 import 'user_details_screen.dart';
-import 'onboarding_complete_screen.dart';
 
 class UserSetupCarousel extends StatefulWidget {
   const UserSetupCarousel({super.key});
@@ -24,7 +24,7 @@ class _UserSetupCarouselState extends State<UserSetupCarousel> {
           MobileNumberScreen(controller: _controller),
           OtpScreen(controller: _controller),
           UserDetailsScreen(controller: _controller),
-          OnboardingCompleteScreen(),
+          const OnboardingCompleteScreen(),
         ],
       ),
     );

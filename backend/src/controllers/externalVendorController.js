@@ -42,9 +42,29 @@ export const receiveVendorUpdate = asyncHandler(async (req, res) => {
     vendorPhone: String(vendorPhone),
     vendorAddress: String(vendorAddress),
     serviceType: String(serviceType),
-    lastUpdated: new Date()
+    lastUpdated: new Date(),
+    assignedAt: booking.externalVendor?.assignedAt || new Date()
   };
-  booking.status = status.toLowerCase();
+
+  // ✅ BLOCKER 6: Status machine validation
+  const validTransitions = {
+    pending: ["accepted", "rejected", "cancelled"],
+    accepted: ["enroute", "rejected", "cancelled"],
+    enroute: ["completed", "cancelled"],
+    rejected: [],
+    completed: [],
+    cancelled: []
+  };
+
+  const newStatus = status.toLowerCase();
+  const allowed = validTransitions[booking.status] || [];
+
+  if (!allowed.includes(newStatus)) {
+    res.status(400);
+    throw new Error(`Invalid status transition from "${booking.status}" to "${newStatus}"`);
+  }
+
+  booking.status = newStatus;
   await booking.save();
 
   console.log(`✅ EXTERNAL_CALLBACK_SUCCESS | Booking: ${booking.booking_id} | Status: ${booking.status}`);

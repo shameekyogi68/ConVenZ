@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import AutoIncrementFactory from "mongoose-sequence";
 
-const AutoIncrement = AutoIncrementFactory(mongoose);
+/** @type {any} */
+const AutoIncrement = AutoIncrementFactory(/** @type {any} */(mongoose));
 
 /* ------------------------------------------
    👨‍🔧 VENDOR SCHEMA
@@ -69,6 +70,11 @@ const vendorSchema = new mongoose.Schema(
       default: 0,
     },
 
+    totalRating: {
+      type: Number,
+      default: 0,
+    },
+
     // 🔗 Subscription reference
     subscription: {
       type: mongoose.Schema.Types.ObjectId,
@@ -80,11 +86,9 @@ const vendorSchema = new mongoose.Schema(
 );
 
 // 🚀 DATABASE INDEXES
-// Compound index covers both service filtering AND geospatial lookup — the core matching query.
-// The standalone { location: "2dsphere" } index is intentionally omitted: MongoDB already
-// uses the compound index for geo-only queries, and a duplicate 2dsphere index wastes space.
-vendorSchema.index({ selectedServices: 1, location: "2dsphere" });
-vendorSchema.index({ vendor_id: 1 });
+// Hot path: Matcher finds online vendors of a specific service.
+vendorSchema.index({ selectedServices: 1, vendor_id: 1 }); 
+// Note: Standalone location index is removed as geo-queries are done via VendorPresence.
 vendorSchema.index({ rating: -1 });
 
 // Auto-increment vendor_id
@@ -93,5 +97,7 @@ vendorSchema.plugin(AutoIncrement, {
   inc_field: "vendor_id",
 });
 
-const Vendor = mongoose.model("Vendor", vendorSchema);
+/** @type {import('./types.js').VendorModel} */
+const Vendor = /** @type {any} */ (mongoose.model("Vendor", vendorSchema));
+
 export default Vendor;

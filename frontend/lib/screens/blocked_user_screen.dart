@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../config/app_colors.dart';
-import '../widgets/primary_button.dart';
 import '../utils/shared_prefs.dart';
+import '../widgets/primary_button.dart';
 
 class BlockedUserScreen extends StatelessWidget {
-  final String? reason;
   const BlockedUserScreen({super.key, this.reason});
+  final String? reason;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +42,7 @@ class BlockedUserScreen extends StatelessWidget {
               const SizedBox(height: 12),
 
               Text(
-                reason?.isNotEmpty == true
+                reason?.isNotEmpty ?? false
                     ? reason!
                     : 'Your account has been suspended. Please contact our support team for assistance.',
                 textAlign: TextAlign.center,
@@ -78,7 +78,9 @@ class BlockedUserScreen extends StatelessWidget {
                 text: 'Log Out',
                 onPressed: () async {
                   await SharedPrefs.clear();
-                  if (context.mounted) context.go('/splash');
+                  if (context.mounted) {
+                    context.go('/splash');
+                  }
                 },
               ).animate().fade(delay: 300.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
             ],

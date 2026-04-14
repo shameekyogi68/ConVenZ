@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import '../../widgets/subscription_card.dart';
+
 import '../../config/app_colors.dart';
 import '../../models/subscription_plan.dart';
 import '../../services/subscription_service.dart';
 import '../../utils/shared_prefs.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import '../../widgets/subscription_card.dart';
 
 class SubscriptionPlansPage extends StatefulWidget {
   const SubscriptionPlansPage({super.key});
@@ -28,21 +29,23 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
 
   Future<void> _checkActiveSubscription() async {
     try {
-      final userId = SharedPrefs.getUserId();
-      if (userId == null || userId.isEmpty) return;
+      final String? userId = SharedPrefs.getUserId();
+      if (userId == null || userId.isEmpty) {
+        return;
+      }
 
-      final result = await SubscriptionService.getUserSubscription(userId);
+      final Map<String, dynamic> result = await SubscriptionService.getUserSubscription(userId);
       
       if (result['success'] == true && result['data'] != null) {
-        final sub = result['data'];
-        final planName = sub['currentPack'] ?? 'Active Plan';
-        final expiryDate = sub['expiryDate'];
+        final sub = result['data'] as Map<String, dynamic>;
+        final String planName = (sub['currentPack'] as String?) ?? 'Active Plan';
+        final dynamic expiryDate = sub['expiryDate'];
         
         // Format expiry date
-        String formattedDate = '';
+        var formattedDate = '';
         if (expiryDate != null) {
           try {
-            final expiry = DateTime.parse(expiryDate);
+            final DateTime expiry = DateTime.parse(expiryDate as String);
             formattedDate = '${expiry.day}/${expiry.month}/${expiry.year}';
           } catch (e) {
             formattedDate = expiryDate.toString();
@@ -50,7 +53,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         }
 
         setState(() {
-          _activeMessage = "You have an active $planName until $formattedDate";
+          _activeMessage = 'You have an active $planName until $formattedDate';
         });
       }
     } catch (_) {}
@@ -61,7 +64,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
       _isLoading = true;
     });
 
-    final result = await SubscriptionService.purchaseSubscription(
+    final Map<String, dynamic> result = await SubscriptionService.purchaseSubscription(
       planId: plan.id ?? '',
     );
 
@@ -69,13 +72,15 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
       _isLoading = false;
     });
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.accentMint,
-          content: Text("${plan.name} activated successfully!",
+          content: Text('${plan.name} activated successfully!',
               style: const TextStyle(color: Color(0xFF1F465A), fontWeight: FontWeight.w600)),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -85,12 +90,14 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
       );
 
       // Navigate to home screen after success
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) context.go('/home');
+      Future<void>.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          context.go('/home');
+        }
       });
     } else {
       // Show error message - could be "already has active subscription" or other error
-      String errorMessage = result['message'] ?? 'Failed to activate plan';
+      final String errorMessage = (result['message'] as String?) ?? 'Failed to activate plan';
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -100,12 +107,11 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 4),
         ),
       );
 
       // If user already has active subscription, update state to show message
-      if (result['statusCode'] == 400 || result['message']?.contains('already have') == true) {
+      if (result['statusCode'] == 400 || (result['message'] as String? ?? '').contains('already have')) {
         setState(() {
           _activeMessage = errorMessage;
         });
@@ -123,7 +129,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         elevation: 0,
         toolbarHeight: 60,
         title: const Text(
-          "Choose Your Plan",
+          'Choose Your Plan',
           style: TextStyle(color: AppColors.primaryTeal, fontSize: 20),
         ),
         centerTitle: true,
@@ -179,7 +185,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                     width: 140,
                     height: 140,
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withValues(alpha: 0.06),
+                      color: AppColors.primaryTeal.withOpacity(0.06),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -195,7 +201,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryTeal.withValues(alpha: 0.35),
+                              color: AppColors.primaryTeal.withOpacity(0.35),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -234,7 +240,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           }
 
           // Success state - Display plans
-          final plans = snapshot.data!;
+          final List<SubscriptionPlan> plans = snapshot.data!;
           return Stack(
             children: [
               ListView.builder(
@@ -247,8 +253,8 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.accentMint.withValues(alpha: 0.08),
-                        border: Border.all(color: AppColors.accentMint.withValues(alpha: 0.4)),
+                        color: AppColors.accentMint.withOpacity(0.08),
+                        border: Border.all(color: AppColors.accentMint.withOpacity(0.4)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -271,10 +277,12 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                   }
 
                   // Adjust index for plans list
-                  int planIndex = _activeMessage != null ? index - 1 : index;
-                  if (planIndex < 0 || planIndex >= plans.length) return const SizedBox.shrink();
+                  final int planIndex = _activeMessage != null ? index - 1 : index;
+                  if (planIndex < 0 || planIndex >= plans.length) {
+                    return const SizedBox.shrink();
+                  }
 
-                  final plan = plans[planIndex];
+                  final SubscriptionPlan plan = plans[planIndex];
                   return SubscriptionCard(
                     plan: plan,
                     onSelect: _isLoading || _activeMessage != null 
@@ -285,8 +293,8 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
               ),
               // Loading overlay
               if (_isLoading)
-                Container(
-                  color: Colors.black.withValues(alpha: 0.3),
+                ColoredBox(
+                  color: Colors.black.withOpacity(0.3),
                   child: const Center(
                     child: CircularProgressIndicator(
                       color: AppColors.primaryTeal,

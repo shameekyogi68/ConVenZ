@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../widgets/primary_button.dart';
-import '../../widgets/otp_box.dart';
 import '../../config/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../utils/shared_prefs.dart';
+import '../../widgets/otp_box.dart';
+import '../../widgets/primary_button.dart';
 
 class OtpScreen extends StatefulWidget {
-  final PageController controller;
   const OtpScreen({super.key, required this.controller});
+  final PageController controller;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -34,10 +34,10 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   void dispose() {
-    for (final c in otpControllers) {
+    for (final TextEditingController c in otpControllers) {
       c.dispose();
     }
-    for (final f in focusNodes) {
+    for (final FocusNode f in focusNodes) {
       f.dispose();
     }
     _countdownTimer?.cancel();
@@ -63,7 +63,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   String get _maskedPhone {
-    final phone = SharedPrefs.getPhone() ?? '';
+    final String phone = SharedPrefs.getPhone() ?? '';
     if (phone.length >= 10) {
       return '+91 ${phone.substring(0, 2)}****${phone.substring(6)}';
     }
@@ -71,17 +71,21 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> _resendOtp() async {
-    final phone = SharedPrefs.getPhone();
-    if (phone == null) return;
+    final String? phone = SharedPrefs.getPhone();
+    if (phone == null) {
+      return;
+    }
 
     setState(() => _isResending = true);
-    final response = await AuthService.registerUser(phone);
-    if (!mounted) return;
+    final Map<String, dynamic> response = await AuthService.registerUser(phone);
+    if (!mounted) {
+      return;
+    }
     setState(() => _isResending = false);
 
     if (response['success'] == true) {
       // Clear current OTP inputs
-      for (final c in otpControllers) {
+      for (final TextEditingController c in otpControllers) {
         c.clear();
       }
       focusNodes[0].requestFocus();
@@ -98,7 +102,7 @@ class _OtpScreenState extends State<OtpScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message'] ?? 'Failed to resend OTP'),
+          content: Text((response['message'] as String?) ?? 'Failed to resend OTP'),
           backgroundColor: AppColors.dangerRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -111,7 +115,7 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> verifyOtp() async {
     FocusScope.of(context).unfocus();
 
-    final otp = otpControllers.map((c) => c.text).join();
+    final String otp = otpControllers.map((c) => c.text).join();
 
     if (otp.length != 4) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +130,7 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    final phone = SharedPrefs.getPhone();
+    final String? phone = SharedPrefs.getPhone();
     if (phone == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -141,12 +145,14 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     setState(() => _isLoading = true);
-    final response = await AuthService.verifyOtp(phone, otp);
-    if (!mounted) return;
+    final Map<String, dynamic> response = await AuthService.verifyOtp(phone, otp);
+    if (!mounted) {
+      return;
+    }
     setState(() => _isLoading = false);
 
     if (response['success'] == true) {
-      final bool isNewUser = response['isNewUser'] ?? true;
+      final bool isNewUser = (response['isNewUser'] as bool?) ?? true;
       widget.controller.animateToPage(
         isNewUser ? 2 : 3,
         duration: const Duration(milliseconds: 400),
@@ -154,13 +160,13 @@ class _OtpScreenState extends State<OtpScreen> {
       );
     } else {
       // Clear boxes on wrong OTP
-      for (final c in otpControllers) {
+      for (final TextEditingController c in otpControllers) {
         c.clear();
       }
       focusNodes[0].requestFocus();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message'] ?? 'Invalid OTP. Please try again.'),
+          content: Text((response['message'] as String?) ?? 'Invalid OTP. Please try again.'),
           backgroundColor: AppColors.dangerRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -218,16 +224,14 @@ class _OtpScreenState extends State<OtpScreen> {
                     const SizedBox(height: 32),
 
                     // Resend row
-                    _isResending
-                        ? const SizedBox(
+                    if (_isResending) const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: AppColors.primaryTeal,
                             ),
-                          )
-                        : _resendCountdown > 0
+                          ) else _resendCountdown > 0
                             ? Text(
                                 'Resend OTP in ${_resendCountdown}s',
                                 style: TextStyle(

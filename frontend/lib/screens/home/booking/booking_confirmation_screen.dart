@@ -5,12 +5,6 @@ import '../../../config/app_colors.dart';
 import '../../../widgets/primary_button.dart';
 
 class BookingConfirmationScreen extends StatelessWidget {
-  final String bookingId;
-  final String serviceName;
-  final String selectedDate;
-  final String selectedTime;
-  final String address;
-  final String? jobDescription;
 
   const BookingConfirmationScreen({
     super.key,
@@ -21,6 +15,12 @@ class BookingConfirmationScreen extends StatelessWidget {
     required this.address,
     this.jobDescription,
   });
+  final String bookingId;
+  final String serviceName;
+  final String selectedDate;
+  final String selectedTime;
+  final String address;
+  final String? jobDescription;
 
   @override
   Widget build(BuildContext context) {

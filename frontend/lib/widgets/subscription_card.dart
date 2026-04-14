@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../widgets/primary_button.dart';
 import '../config/app_colors.dart';
-import '../models/subscription_plan.dart';  // ⬅️ Make sure this exists
+import '../models/subscription_plan.dart'; // ⬅️ Make sure this exists
+import '../widgets/primary_button.dart';
 
 class SubscriptionCard extends StatelessWidget {
-  final SubscriptionPlan plan;
-  final VoidCallback? onSelect;
 
   const SubscriptionCard({
     super.key,
     required this.plan,
     this.onSelect,
   });
+  final SubscriptionPlan plan;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +22,11 @@ class SubscriptionCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 6,
-            offset: const Offset(0, 3),
+            offset: Offset(0, 3),
           )
         ],
       ),
@@ -46,7 +46,7 @@ class SubscriptionCard extends StatelessWidget {
 
           // Price
           Text(
-            "₹${plan.price} / ${plan.duration}",
+            '₹${plan.price} / ${plan.duration}',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -57,7 +57,7 @@ class SubscriptionCard extends StatelessWidget {
 
           // Duration info
           Text(
-            "Perfect for ${plan.duration}",
+            'Perfect for ${plan.duration}',
             style: const TextStyle(
               fontSize: 15,
               color: AppColors.darkGrey,
@@ -95,7 +95,7 @@ class SubscriptionCard extends StatelessWidget {
 
           // Corrected Button
           PrimaryButton(
-            text: "Select Plan",
+            text: 'Select Plan',
             onPressed: onSelect, // 🔥 Corrected from onTap → onPressed
           ),
         ],

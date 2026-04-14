@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 
 class OtpBox extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final VoidCallback? onFilled;
 
   const OtpBox({
     super.key,
@@ -12,6 +9,9 @@ class OtpBox extends StatelessWidget {
     required this.focusNode,
     this.onFilled,
   });
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback? onFilled;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class OtpBox extends StatelessWidget {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide(color: AppColors.primaryTeal.withValues(alpha: 0.5), width: 1.2),
+            borderSide: BorderSide(color: AppColors.primaryTeal.withOpacity(0.5), width: 1.2),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),

@@ -2,11 +2,6 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 
 class PrimaryButton extends StatelessWidget {
-  final String text;
-  final VoidCallback? onPressed;
-  final bool enabled;
-  final IconData? icon;
-  final bool isLoading;
 
   const PrimaryButton({
     super.key,
@@ -16,10 +11,15 @@ class PrimaryButton extends StatelessWidget {
     this.icon,
     this.isLoading = false,
   });
+  final String text;
+  final VoidCallback? onPressed;
+  final bool enabled;
+  final IconData? icon;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    final isDisabled = !enabled || onPressed == null || isLoading;
+    final bool isDisabled = !enabled || onPressed == null || isLoading;
     return SizedBox(
       width: double.infinity,
       height: 56,

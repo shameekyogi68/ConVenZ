@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
-import '../../widgets/secondary_button.dart';
 import '../../models/booking.dart';
 import '../../services/booking_service.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -26,7 +25,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   Future<void> _loadBookings() async {
     setState(() => _isLoading = true);
     try {
-      final bookings = await BookingService.getUserBookings();
+      final List<Booking> bookings = await BookingService.getUserBookings();
       if (mounted) {
         setState(() {
           _bookings = bookings;
@@ -35,7 +34,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       }
     } catch (_) {
       // ✅ No raw error — show friendly retry state
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -63,7 +64,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   String _formatDate(String rawDate) {
     try {
-      final dt = DateTime.parse(rawDate);
+      final DateTime dt = DateTime.parse(rawDate);
       return '${dt.day} ${_month(dt.month)} ${dt.year}';
     } catch (_) {
       return rawDate.split('T').first;
@@ -132,7 +133,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 
   Widget _buildBookingCard(Booking booking) {
-    final statusColor = _getStatusColor(booking.status);
+    final Color statusColor = _getStatusColor(booking.status);
 
     return GestureDetector(
       onTap: () => context.push('/bookingTracking', extra: {'bookingId': booking.id}),

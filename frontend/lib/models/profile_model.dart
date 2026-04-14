@@ -1,13 +1,5 @@
 /// User profile model — maps to the backend User schema
 class ProfileModel {
-  final int? userId;
-  final String name;
-  final String phone;
-  final String address;
-  final String? gender;
-  final bool isOnline;
-  final bool isBlocked;
-  final String? subscriptionId;
 
   ProfileModel({
     this.userId,
@@ -32,6 +24,14 @@ class ProfileModel {
       subscriptionId: json['subscription']?.toString(),
     );
   }
+  final int? userId;
+  final String name;
+  final String phone;
+  final String address;
+  final String? gender;
+  final bool isOnline;
+  final bool isBlocked;
+  final String? subscriptionId;
 
   Map<String, dynamic> toJson() => {
         'user_id': userId,

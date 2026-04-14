@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../config/app_colors.dart';
-import '../../widgets/primary_button.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../services/location_services.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../config/app_colors.dart';
 import '../../services/auth_service.dart';
+import '../../services/location_services.dart';
 import '../../utils/shared_prefs.dart';
+import '../../widgets/primary_button.dart';
 
 class OnboardingCompleteScreen extends StatefulWidget {
-  final String? userName;
 
   const OnboardingCompleteScreen({super.key, this.userName});
+  final String? userName;
 
   @override
   State<OnboardingCompleteScreen> createState() => _OnboardingCompleteScreenState();
@@ -24,20 +25,22 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
       setState(() {
         _animate = true;
       });
     });
   }
 
-  void goToDashboard() async {
-    if (_isLoading) return;
+  Future<void> goToDashboard() async {
+    if (_isLoading) {
+      return;
+    }
 
     setState(() { _isLoading = true; });
 
     // 1. Get User ID
-    String? userId = SharedPrefs.getUserId();
+    final String? userId = SharedPrefs.getUserId();
 
     if (userId == null) {
       setState(() { _isLoading = false; });
@@ -50,7 +53,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
     // 2. Get Location & Update Server
     try {
       // Added a timeout to prevent hanging if location request takes too long
-      Position? position = await LocationService.determinePosition()
+      final Position? position = await LocationService.determinePosition()
           .timeout(const Duration(seconds: 5), onTimeout: () => null);
 
       if (position != null) {
@@ -138,7 +141,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
               ),
               const SizedBox(height: 16),
               const Text(
-                "You’re all set up! Let’s get started and explore your dashboard.",
+                'You’re all set up! Let’s get started and explore your dashboard.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -148,7 +151,7 @@ class _OnboardingCompleteScreenState extends State<OnboardingCompleteScreen>
               ),
               const SizedBox(height: 60),
               PrimaryButton(
-                text: _isLoading ? "Setting up..." : "Go to Dashboard",
+                text: _isLoading ? 'Setting up...' : 'Go to Dashboard',
                 onPressed: goToDashboard,
                 enabled: !_isLoading,
               ),

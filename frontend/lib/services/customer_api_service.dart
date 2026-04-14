@@ -3,9 +3,11 @@
 // ============================================
 // Base URL: https://convenzcusb-backend.onrender.com
 // All endpoints use /api prefix automatically via ApiService
+// JWT Authentication: Handled automatically by ApiService using SharedPrefs token
 
 import '../services/api_service.dart';
 import '../services/notification_service.dart';
+import '../utils/app_logger.dart';
 import '../utils/shared_prefs.dart';
 
 class CustomerAPIService {
@@ -17,11 +19,11 @@ class CustomerAPIService {
   // Description: Register new user with phone number
   static Future<Map<String, dynamic>> registerUser(String phone) async {
     try {
-      String? fcmToken = NotificationService.getFcmToken();
+      final String? fcmToken = NotificationService.fcmToken;
       
-      final response = await ApiService.post("/user/register", {
-        "phone": phone,
-        "fcmToken": fcmToken,
+      final Map<String, dynamic> response = await ApiService.post('/user/register', {
+        'phone': phone,
+        'fcmToken': fcmToken,
       });
       
       // Response structure:
@@ -32,19 +34,19 @@ class CustomerAPIService {
       //   "isNewUser": true
       // }
       
-      if (response["success"] == true) {
+      if (response['success'] == true) {
         await SharedPrefs.savePhone(phone);
-        if (response["userId"] != null) {
-          await SharedPrefs.saveUserId(response["userId"].toString());
+        if (response['userId'] != null) {
+          await SharedPrefs.saveUserId(response['userId'].toString());
         }
-        await SharedPrefs.saveIsNewUser(response["isNewUser"] ?? true);
+        await SharedPrefs.saveIsNewUser((response['isNewUser'] as bool?) ?? true);
       }
       
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "Registration failed: $e"
+        'success': false,
+        'message': 'Registration failed: $e'
       };
     }
   }
@@ -56,9 +58,9 @@ class CustomerAPIService {
   // Description: Verify OTP sent to user's phone
   static Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
     try {
-      final response = await ApiService.post("/user/verify-otp", {
-        "phone": phone,
-        "otp": otp
+      final Map<String, dynamic> response = await ApiService.post('/user/verify-otp', {
+        'phone': phone,
+        'otp': otp
       });
       
       // Response structure:
@@ -69,15 +71,15 @@ class CustomerAPIService {
       //   "isNewUser": false
       // }
       
-      if (response["success"] == true) {
-        if (response["token"] != null) {
-          await SharedPrefs.saveToken(response["token"]);
+      if (response['success'] == true) {
+        if (response['token'] != null) {
+          await SharedPrefs.saveToken(response['token'] as String);
         }
         
-        if (response["userId"] != null) {
-          await SharedPrefs.saveUserId(response["userId"].toString());
+        if (response['userId'] != null) {
+          await SharedPrefs.saveUserId(response['userId'].toString());
         }
-        await SharedPrefs.saveIsNewUser(response["isNewUser"] ?? false);
+        await SharedPrefs.saveIsNewUser((response['isNewUser'] as bool?) ?? false);
         
         // Update FCM token after successful login
         await NotificationService.refreshAndSendToken();
@@ -86,8 +88,8 @@ class CustomerAPIService {
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "OTP verification failed: $e"
+        'success': false,
+        'message': 'OTP verification failed: $e'
       };
     }
   }
@@ -99,7 +101,7 @@ class CustomerAPIService {
   // Description: Update FCM token for push notifications
   static Future<Map<String, dynamic>> updateFcmToken(String userId, String fcmToken) async {
     try {
-      final response = await ApiService.post('/user/update-fcm-token', {
+      final Map<String, dynamic> response = await ApiService.post('/user/update-fcm-token', {
         'userId': userId,
         'fcmToken': fcmToken,
         'userType': 'customer',
@@ -114,8 +116,8 @@ class CustomerAPIService {
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "FCM token update failed: $e"
+        'success': false,
+        'message': 'FCM token update failed: $e'
       };
     }
   }
@@ -132,11 +134,11 @@ class CustomerAPIService {
     required String address,
   }) async {
     try {
-      final response = await ApiService.post("/user/update-location", {
-        "userId": userId,
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
+      final Map<String, dynamic> response = await ApiService.post('/user/update-location', {
+        'userId': userId,
+        'latitude': latitude,
+        'longitude': longitude,
+        'address': address,
       });
       
       // Response structure:
@@ -153,8 +155,8 @@ class CustomerAPIService {
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "Location update failed: $e"
+        'success': false,
+        'message': 'Location update failed: $e'
       };
     }
   }
@@ -173,22 +175,22 @@ class CustomerAPIService {
     String? jobDescription,
   }) async {
     try {
-      final bookingData = {
-        "userId": userId,
-        "selectedService": selectedService,
-        "selectedDate": selectedDate,
-        "selectedTime": selectedTime,
-        "userLocation": {
-          "latitude": userLocation['latitude'],
-          "longitude": userLocation['longitude'],
-          "address": userLocation['address'],
+      final Map<String, Object> bookingData = {
+        'userId': userId,
+        'selectedService': selectedService,
+        'selectedDate': selectedDate,
+        'selectedTime': selectedTime,
+        'userLocation': {
+          'latitude': userLocation['latitude'],
+          'longitude': userLocation['longitude'],
+          'address': userLocation['address'],
         },
-        "jobDescription": jobDescription ?? "",
+        'jobDescription': jobDescription ?? '',
       };
 
-      print("📤 Creating booking: $bookingData");
+      AppLogger.d('📤 Creating booking: $bookingData');
 
-      final response = await ApiService.post("/user/booking/create", bookingData);
+      final Map<String, dynamic> response = await ApiService.post('/user/booking/create', bookingData);
       
       // Response structure:
       // {
@@ -207,14 +209,14 @@ class CustomerAPIService {
       //   }
       // }
       
-      print("📥 Booking response: $response");
+      AppLogger.i('📥 Booking response: $response');
 
       return response;
     } catch (e) {
-      print("❌ Error creating booking: $e");
+      AppLogger.e('Error creating booking', e);
       return {
-        "success": false,
-        "message": "Failed to create booking: $e"
+        'success': false,
+        'message': 'Failed to create booking: $e'
       };
     }
   }
@@ -226,7 +228,7 @@ class CustomerAPIService {
   // Description: Fetch user profile details
   static Future<Map<String, dynamic>> getUserProfile(String userId) async {
     try {
-      final response = await ApiService.get("/user/profile/$userId");
+      final Map<String, dynamic> response = await ApiService.get('/user/profile/$userId');
       
       // Response structure:
       // {
@@ -245,9 +247,22 @@ class CustomerAPIService {
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "Failed to fetch profile: $e"
+        'success': false,
+        'message': 'Failed to fetch profile: $e'
       };
+    }
+  }
+
+  // ============================================
+  // 🚪 LOGOUT
+  // ============================================
+  // Description: Clear all user data and session
+  static Future<void> logout() async {
+    try {
+      await SharedPrefs.clear();
+      AppLogger.i('👤 User logged out successfully');
+    } catch (e) {
+      AppLogger.e('Error during logout', e);
     }
   }
 
@@ -259,11 +274,11 @@ class CustomerAPIService {
     int maxRetries = 3,
     Duration retryDelay = const Duration(seconds: 2),
   }) async {
-    int attempts = 0;
+    var attempts = 0;
     
     while (attempts < maxRetries) {
       try {
-        final response = await apiCall();
+        final Map<String, dynamic> response = await apiCall();
         
         if (response['success'] == true) {
           return response;
@@ -272,23 +287,23 @@ class CustomerAPIService {
         // If not successful but no exception, retry
         attempts++;
         if (attempts < maxRetries) {
-          await Future.delayed(retryDelay * attempts); // Exponential backoff
+          await Future<void>.delayed(retryDelay * attempts); // Exponential backoff
         }
       } catch (e) {
         attempts++;
         if (attempts >= maxRetries) {
           return {
-            "success": false,
-            "message": "Failed after $maxRetries attempts: $e"
+            'success': false,
+            'message': 'Failed after $maxRetries attempts: $e'
           };
         }
-        await Future.delayed(retryDelay * attempts);
+        await Future<void>.delayed(retryDelay * attempts);
       }
     }
     
     return {
-      "success": false,
-      "message": "Max retry attempts reached"
+      'success': false,
+      'message': 'Max retry attempts reached'
     };
   }
 
@@ -353,9 +368,9 @@ class CustomerAPIService {
 2. ✅ FCM token updated on every login
 3. ✅ User ID stored securely in SharedPreferences
 4. ✅ Location only sent when creating booking or explicitly updated
-5. ❌ TODO: Implement JWT authentication
-6. ❌ TODO: Add API request signing
-7. ❌ TODO: Implement certificate pinning for production
+5. ✅ JWT Authentication: Implemented (Bearer token injected by ApiService)
+6. ✅ Add API request signing (HMAC-SHA256)
+7. ✅ Implemented certificate pinning in ApiService for production
 */
 
 // ============================================

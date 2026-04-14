@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../models/booking.dart';
-import '../../screens/splash/splash_screen.dart';
-import '../../screens/welcome/welcome_carousel.dart';
-import '../../screens/user_setup/user_setup_carousel.dart';
-import '../../screens/home/home_screen.dart';
-import '../../screens/booking_flow/vendor_details_screen.dart';
+import '../../screens/blocked_user_screen.dart';
 import '../../screens/booking_flow/booking_otp_screen.dart';
-import '../../screens/booking_flow/feedback_screen.dart';
 import '../../screens/booking_flow/completion_screen.dart';
+import '../../screens/booking_flow/feedback_screen.dart';
+import '../../screens/booking_flow/vendor_details_screen.dart';
 import '../../screens/home/booking/booking_confirmation_screen.dart';
-import '../../screens/home/booking/vendor_search_screen.dart';
-import '../../screens/home/booking/vendor_searching_screen.dart';
+import '../../screens/home/booking/booking_tracking_screen.dart';
+import '../../screens/home/booking/map_screen.dart';
+import '../../screens/home/booking/service_details_screen.dart';
 import '../../screens/home/booking/vendor_found_screen.dart';
 import '../../screens/home/booking/vendor_not_found_screen.dart';
-import '../../screens/home/booking/service_details_screen.dart';
-import '../../screens/home/booking/map_screen.dart';
-import '../../screens/home/booking/booking_tracking_screen.dart';
-import '../../screens/blocked_user_screen.dart';
+import '../../screens/home/booking/vendor_search_screen.dart';
+import '../../screens/home/booking/vendor_searching_screen.dart';
+import '../../screens/home/home_screen.dart';
+import '../../screens/splash/splash_screen.dart';
+import '../../screens/user_setup/user_setup_carousel.dart';
+import '../../screens/welcome/welcome_carousel.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -49,7 +50,7 @@ class AppRouter {
         path: '/home',
         builder: (context, state) {
           final args = state.extra as Map<String, dynamic>?;
-          final tab = (args?['tab'] as int?) ?? 0;
+          final int tab = (args?['tab'] as int?) ?? 0;
           return HomeScreen(initialTab: tab);
         },
       ),
@@ -58,21 +59,21 @@ class AppRouter {
       GoRoute(
         path: '/vendorDetails',
         builder: (context, state) {
-          final booking = state.extra as Booking;
+          final booking = state.extra! as Booking;
           return VendorDetailsScreen(booking: booking);
         },
       ),
       GoRoute(
         path: '/bookingOtp',
         builder: (context, state) {
-          final booking = state.extra as Booking;
+          final booking = state.extra! as Booking;
           return BookingOtpScreen(booking: booking);
         },
       ),
       GoRoute(
         path: '/feedback',
         builder: (context, state) {
-          final booking = state.extra as Booking;
+          final booking = state.extra! as Booking;
           return FeedbackScreen(booking: booking);
         },
       ),
@@ -85,7 +86,7 @@ class AppRouter {
       GoRoute(
         path: '/map',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>? ?? {};
+          final Map<String, dynamic> args = state.extra as Map<String, dynamic>? ?? {};
           return MapScreen(
             selectedService: args['selectedService'] as String?,
           );
@@ -94,7 +95,7 @@ class AppRouter {
       GoRoute(
         path: '/serviceDetails',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return ServiceDetailsScreen(
             address: args['address'] as String,
             selectedService: args['selectedService'] as String?,
@@ -106,7 +107,7 @@ class AppRouter {
       GoRoute(
         path: '/bookingConfirmation',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return BookingConfirmationScreen(
             bookingId: args['bookingId'] as String,
             serviceName: args['serviceName'] as String,
@@ -120,7 +121,7 @@ class AppRouter {
       GoRoute(
         path: '/vendorSearching',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return VendorSearchingScreen(
             bookingId: args['bookingId'] as String,
             serviceName: args['serviceName'] as String,
@@ -130,7 +131,7 @@ class AppRouter {
       GoRoute(
         path: '/vendorSearch',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return VendorSearchScreen(
             bookingId: args['bookingId'] as String,
             serviceName: args['serviceName'] as String,
@@ -140,7 +141,7 @@ class AppRouter {
       GoRoute(
         path: '/vendorFound',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return VendorFoundScreen(
             bookingId: args['bookingId'] as String,
             vendorName: args['vendorName'] as String? ?? 'Vendor',
@@ -155,7 +156,7 @@ class AppRouter {
       GoRoute(
         path: '/vendorNotFound',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return VendorNotFoundScreen(
             bookingId: args['bookingId'] as String,
             serviceName: args['serviceName'] as String,
@@ -165,7 +166,7 @@ class AppRouter {
       GoRoute(
         path: '/bookingTracking',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra! as Map<String, dynamic>;
           return BookingTrackingScreen(
             bookingId: args['bookingId'] as String,
           );
@@ -184,7 +185,7 @@ class AppRouter {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text('Route: ${state.uri.toString()}'),
+            Text('Route: ${state.uri}'),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => context.go('/home'),

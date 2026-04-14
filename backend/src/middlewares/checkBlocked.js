@@ -19,7 +19,9 @@ export const checkUserBlocked = async (req, res, next) => {
 
     // Find user by userId or phone
     let user;
-    if (userId) {
+    if (req.user) {
+      user = req.user;
+    } else if (userId) {
       user = await User.findOne({ user_id: userId });
     } else if (phone) {
       user = await User.findOne({ phone: phone });

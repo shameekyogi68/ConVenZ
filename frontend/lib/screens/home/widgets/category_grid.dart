@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../config/app_colors.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../config/app_colors.dart';
 
 class CategoryGrid extends StatelessWidget {
   const CategoryGrid({super.key});
@@ -26,7 +27,7 @@ class CategoryGrid extends StatelessWidget {
   }
 
   void _showMoreSheet(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -142,7 +143,7 @@ class CategoryGrid extends StatelessWidget {
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            final item = items[index];
+            final Map<String, dynamic> item = items[index];
             final isMore = item['isMore'] == true;
 
             return InkWell(
@@ -156,11 +157,11 @@ class CategoryGrid extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                        color: AppColors.primaryTeal.withValues(alpha: 0.06),
+                        color: AppColors.primaryTeal.withOpacity(0.06),
                         blurRadius: 12,
                         offset: const Offset(0, 4)),
                     BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
+                        color: Colors.black.withOpacity(0.02),
                         blurRadius: 4,
                         offset: const Offset(0, 2)),
                   ],

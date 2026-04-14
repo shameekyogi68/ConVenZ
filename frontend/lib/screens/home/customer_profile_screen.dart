@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../config/app_colors.dart';
-import '../../widgets/text_input.dart';
-import '../../widgets/primary_button.dart';
-import '../../services/profile_service.dart';
-import '../../models/profile_model.dart';
-import '../../utils/shared_prefs.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../config/app_colors.dart';
+import '../../models/profile_model.dart';
+import '../../services/profile_service.dart';
+import '../../utils/shared_prefs.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/text_input.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   const CustomerProfileScreen({super.key});
@@ -50,8 +51,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     addressController.text = '';
 
     try {
-      final response = await ProfileService.getProfile();
-      if (!mounted) return;
+      final Map<String, dynamic> response = await ProfileService.getProfile();
+      if (!mounted) {
+        return;
+      }
 
       if (response['success'] == true && response['data'] != null) {
         final p = ProfileModel.fromJson(response['data'] as Map<String, dynamic>);
@@ -70,12 +73,14 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         setState(() => profile = null);
       }
     } finally {
-      if (mounted) setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
   Future<void> _saveProfile() async {
-    final name = nameController.text.trim();
+    final String name = nameController.text.trim();
     if (name.isEmpty) {
       _showSnackBar('Please enter your name', isError: true);
       return;
@@ -83,8 +88,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
     setState(() => isSaving = true);
     try {
-      final response = await ProfileService.updateProfile(name: name);
-      if (!mounted) return;
+      final Map<String, dynamic> response = await ProfileService.updateProfile(name: name);
+      if (!mounted) {
+        return;
+      }
 
       if (response['success'] == true) {
         _showSnackBar('Profile updated successfully ✓');
@@ -94,14 +101,18 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         _showSnackBar('Could not save changes. Please try again.', isError: true);
       }
     } catch (_) {
-      if (mounted) _showSnackBar('Connection error. Try again later.', isError: true);
+      if (mounted) {
+        _showSnackBar('Connection error. Try again later.', isError: true);
+      }
     } finally {
-      if (mounted) setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
+    final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -120,14 +131,18 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed ?? false) {
       await SharedPrefs.clear();
-      if (mounted) context.go('/welcomeCarousel');
+      if (mounted) {
+        context.go('/welcomeCarousel');
+      }
     }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -196,7 +211,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryTeal.withValues(alpha: 0.15),
+                            color: AppColors.primaryTeal.withOpacity(0.15),
                             blurRadius: 24,
                             spreadRadius: 4,
                           ),
@@ -282,7 +297,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                             padding: EdgeInsets.only(top: 14),
                             child: Icon(Icons.location_on_outlined, color: AppColors.primaryTeal),
                           ),
-                          prefixIconConstraints: const BoxConstraints(minWidth: 50, minHeight: 0),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 50),
                           labelText: 'Detected Address',
                           labelStyle: const TextStyle(color: AppColors.darkGrey),
                           filled: true,
@@ -310,9 +325,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     if (isEditing)
                       Column(
                         children: [
-                          isSaving
-                              ? const CircularProgressIndicator(color: AppColors.primaryTeal)
-                              : PrimaryButton(text: 'Save Changes', onPressed: _saveProfile),
+                          if (isSaving) const CircularProgressIndicator(color: AppColors.primaryTeal) else PrimaryButton(text: 'Save Changes', onPressed: _saveProfile),
                           const SizedBox(height: 20),
                         ],
                       ).animate().fade().slideY(begin: 0.15, end: 0, duration: 250.ms),
@@ -322,9 +335,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.dangerRed.withValues(alpha: 0.04),
+                        color: AppColors.dangerRed.withOpacity(0.04),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.dangerRed.withValues(alpha: 0.15)),
+                        border: Border.all(color: AppColors.dangerRed.withOpacity(0.15)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +367,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                Icon(Icons.arrow_forward_ios_rounded, color: AppColors.dangerRed.withValues(alpha: 0.5), size: 14),
+                                Icon(Icons.arrow_forward_ios_rounded, color: AppColors.dangerRed.withOpacity(0.5), size: 14),
                               ],
                             ),
                           ),

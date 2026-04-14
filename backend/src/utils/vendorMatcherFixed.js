@@ -10,11 +10,18 @@ import { calculateDistance } from "./distanceCalculator.js";
  * @param {Number} latitude        - Customer's latitude
  * @param {Number} longitude       - Customer's longitude
  * @param {Number} maxDistance     - Maximum search radius in km (default: 50)
- * @returns {Object|null} Best matched vendor with distance info, or null if none found
+ * @returns {Promise<Object|null>} Best matched vendor with distance info, or null if none found
  */
 export const findBestVendor = async (selectedService, latitude, longitude, maxDistance = 50) => {
-  // Fetch all online presences — filtered by the { online: 1 } index
-  const onlinePresences = await VendorPresence.find({ online: true }).lean();
+  // Fetch only online presences that have been seen in the last 15 minutes
+  // Fixes: Crashed vendor apps staying "online" forever.
+  const staleThreshold = new Date(Date.now() - 15 * 60 * 1000);
+
+  const onlinePresences = await VendorPresence.find({ 
+    online: true,
+    lastSeen: { $gte: staleThreshold } 
+  }).lean();
+  
   if (!onlinePresences.length) return null;
 
   const onlineVendorIds = onlinePresences.map((p) => p.vendorId);
@@ -36,6 +43,7 @@ export const findBestVendor = async (selectedService, latitude, longitude, maxDi
     if (!presence?.currentLocation?.coordinates?.length) continue;
 
     const [vendorLon, vendorLat] = presence.currentLocation.coordinates;
+    if (vendorLon === 0 && vendorLat === 0) continue; // skip uninitialized location
     const distance = calculateDistance(latitude, longitude, vendorLat, vendorLon);
 
     if (distance <= maxDistance) {
@@ -78,6 +86,9 @@ export const findBestVendor = async (selectedService, latitude, longitude, maxDi
 
 /**
  * Find all online vendors offering a given service (no distance filter).
+ *
+ * @param {String} selectedService - Service requested
+ * @returns {Promise<Array>} List of matching vendors
  */
 export const findAllAvailableVendors = async (selectedService) => {
   const onlinePresences = await VendorPresence.find({ online: true }, { vendorId: 1 }).lean();
@@ -90,6 +101,9 @@ export const findAllAvailableVendors = async (selectedService) => {
 
 /**
  * Check if a specific vendor is currently online.
+ *
+ * @param {String} vendorId - Vendor unique identifier
+ * @returns {Promise<Boolean>} True if online and recently seen
  */
 export const isVendorAvailable = async (vendorId) => {
   try {

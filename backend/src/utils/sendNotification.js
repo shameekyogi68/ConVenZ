@@ -5,8 +5,13 @@ import User from "../models/userModel.js";
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
-/** FCM requires every data value to be a string. */
+/** 
+ * FCM requires every data value to be a string.
+ * @param {Record<string, any>} data
+ * @returns {Record<string, string>}
+ */
 const stringifyData = (data = {}) => {
+  /** @type {Record<string, string>} */
   const out = { clickAction: "FLUTTER_NOTIFICATION_CLICK" };
   for (const [k, v] of Object.entries(data)) {
     out[k] = String(v);
@@ -17,6 +22,7 @@ const stringifyData = (data = {}) => {
 /** Android / APNs config shared by every message type. */
 const platformConfig = (channelId = "high_importance_channel") => ({
   android: {
+    /** @type {"high" | "normal"} */
     priority: "high",
     notification: { sound: "default", channelId },
   },
@@ -54,7 +60,9 @@ export const sendNotification = async (token, title, body, data = {}) => {
   } catch (error) {
     console.error(`❌ FCM_FAILED | ${error.code} | ${error.message} | Token: ${token?.substring(0, 20)}…`);
     if (isInvalidTokenError(error.code, error.message)) {
-      throw new Error(`Invalid or expired FCM token: ${error.message}`);
+      const e = new Error(`Invalid or expired FCM token: ${error.message}`);
+      e.cause = error;
+      throw e;
     }
     throw error;
   }
@@ -136,6 +144,7 @@ export const sendOtpNotification = async (fcmToken, otp, userId = null) => {
     notification: { title: "Your Login OTP", body: `Your OTP is ${otp}` },
     data: stringifyData({ type: "otp", otp: String(otp) }),
     android: {
+      /** @type {"high" | "normal"} */
       priority: "high",
       notification: { sound: "default", channelId: "otp_channel" },
     },
@@ -157,7 +166,9 @@ export const sendOtpNotification = async (fcmToken, otp, userId = null) => {
   } catch (error) {
     console.error(`❌ OTP_PUSH_FAILED | User: ${userId ?? 'N/A'} | ${error.message}`);
     if (isInvalidTokenError(error.code, error.message)) {
-      throw new Error(`Invalid or expired FCM token: ${error.message}`);
+      const e = new Error(`Invalid or expired FCM token: ${error.message}`);
+      e.cause = error;
+      throw e;
     }
     throw error;
   }

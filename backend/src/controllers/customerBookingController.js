@@ -3,6 +3,7 @@ import Booking from "../models/bookingModel.js";
 import User from "../models/userModel.js";
 import { findBestVendor } from "../utils/vendorMatcherFixed.js";
 import { sendNotification } from "../utils/sendNotification.js";
+import Vendor from "../models/vendorModel.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 /* ------------------------------------------------------------
@@ -17,6 +18,17 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
   if (!customer) {
     res.status(404);
     throw new Error("Customer not found");
+  }
+
+  // ✅ BLOCKER 4: Prevent unlimited simultaneous pending bookings
+  const activePending = await Booking.countDocuments({
+    userId,
+    status: { $in: ["pending", "accepted", "enroute"] }
+  });
+  
+  if (activePending >= 1) {
+    res.status(400);
+    throw new Error("You already have an active booking in progress. Please complete or cancel it first.");
   }
 
   // Create booking
@@ -37,8 +49,8 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
   console.log(`✅ BOOKING_CREATED | ID: ${newBooking.booking_id}`);
 
   // FIRE-AND-FORGET: External Vendor Notifications
-  const externalVendorUrl = 'https://convenz-vendor-dor.vercel.app/api/external/orders';
-  const webserverVendorUrl = 'https://webserver-vendor.vercel.app/api/external/orders';
+  const externalVendorUrl = process.env.EXTERNAL_VENDOR_URL || 'https://convenz-vendor-dor.vercel.app/api/external/orders';
+  const webserverVendorUrl = process.env.WEBSERVER_VENDOR_URL || 'https://webserver-vendor.vercel.app/api/external/orders';
   
   const payload = {
     bookingId: newBooking.booking_id,
@@ -95,7 +107,16 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const getUserBookings = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const bookings = await Booking.find({ userId }).sort({ createdAt: -1 }).limit(50);
+
+  // Validate the URL param matches the authenticated user
+  if (req.params.userId && req.params.userId !== userId) {
+    res.status(403);
+    throw new Error("You can only query your own bookings");
+  }
+
+  // Limit queries to the last 90 days to prevent full collection scans on old users
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const bookings = await Booking.find({ userId, createdAt: { $gte: ninetyDaysAgo } }).sort({ createdAt: -1 }).limit(50);
   return res.status(200).json({ success: true, count: bookings.length, data: bookings });
 });
 
@@ -156,6 +177,19 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     throw new Error("Booking not found");
   }
 
+  const validTransitions = {
+    pending: ["accepted", "rejected", "cancelled"],
+    accepted: ["completed", "cancelled", "rejected"],
+    completed: [],
+    cancelled: [],
+    rejected: []
+  };
+
+  if (!validTransitions[booking.status] || !validTransitions[booking.status].includes(status)) {
+    res.status(400);
+    throw new Error(`Invalid status transition from ${booking.status} to ${status}`);
+  }
+
   booking.status = status;
   if (status === "accepted" && otpStart) booking.otpStart = otpStart;
   if (vendorId) booking.vendorId = vendorId;
@@ -175,4 +209,102 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json({ success: true, message: "Status updated", data: booking });
+});
+
+/* ------------------------------------------------------------
+   🔑 VERIFY JOB OTP (Service Start Confirmation)
+   BLOCKER 3: Ensures vendor is physically present
+------------------------------------------------------------ */
+export const verifyJobOtp = asyncHandler(async (req, res) => {
+  const { bookingId, otp } = req.body;
+  const userId = req.user.user_id;
+
+  // Find booking and include otpStart (select: false in schema)
+  const booking = await Booking.findOne({ booking_id: bookingId }).select("+otpStart");
+
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found");
+  }
+
+  if (booking.userId !== userId) {
+    res.status(403);
+    throw new Error("You are not authorized to verify this booking");
+  }
+
+  if (booking.status !== "accepted" && booking.status !== "enroute") {
+    res.status(400);
+    throw new Error(`OTP verification not available for status: ${booking.status}`);
+  }
+
+  if (parseInt(otp) !== booking.otpStart) {
+    res.status(400);
+    throw new Error("Invalid start OTP. Please check with your vendor.");
+  }
+
+  // Transition to enroute or virtual "in_progress" (mapped to enroute for now)
+  // Or handle as a successful checkpoint before completion
+  booking.status = "enroute"; // If enroute, it stays enroute but verified
+  await booking.save();
+
+  console.log(`✅ JOB_STARTED | Booking: ${booking.booking_id} | Customer: ${userId}`);
+
+  return res.status(200).json({
+    success: true,
+    message: "Service start verified successfully. Vendor may now proceed.",
+    status: booking.status
+  });
+});
+
+/* ------------------------------------------------------------
+   ⭐ RATE VENDOR (Submit Review)
+------------------------------------------------------------ */
+export const submitReview = asyncHandler(async (req, res) => {
+  const { rating, reviewText } = req.body;
+  const bookingId = req.params.bookingId;
+  const userId = req.user.user_id;
+
+  const booking = await Booking.findOne({ booking_id: bookingId });
+  if (!booking) {
+    res.status(404);
+    throw new Error("Booking not found");
+  }
+
+  if (booking.userId !== userId) {
+    res.status(403);
+    throw new Error("Unauthorized to review this booking");
+  }
+
+  if (booking.status !== "completed") {
+    res.status(400);
+    throw new Error("Can only review completed bookings");
+  }
+
+  if (booking.rating) {
+    res.status(400);
+    throw new Error("Review already submitted for this booking");
+  }
+
+  if (!rating || rating < 1 || rating > 5) {
+    res.status(400);
+    throw new Error("Invalid rating. Must be between 1 and 5.");
+  }
+
+  booking.rating = rating;
+  booking.review = reviewText;
+  await booking.save();
+
+  // ✅ Update Vendor's Average Rating
+  if (booking.vendorId) {
+    const vendor = await Vendor.findOne({ vendor_id: booking.vendorId });
+    if (vendor) {
+      vendor.completedBookings = (vendor.completedBookings || 0) + 1;
+      vendor.totalRating = (vendor.totalRating || 0) + rating;
+      vendor.rating = parseFloat((vendor.totalRating / vendor.completedBookings).toFixed(2));
+      await vendor.save();
+      console.log(`⭐ VENDOR_RATING_UPDATED | Vendor: ${vendor.vendor_id} | New Rating: ${vendor.rating}`);
+    }
+  }
+
+  return res.status(200).json({ success: true, message: "Review submitted successfully" });
 });

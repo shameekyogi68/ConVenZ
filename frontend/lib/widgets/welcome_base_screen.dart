@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 
-class WelcomeBaseScreen extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String buttonText;
-  final VoidCallback onNext;
-  final bool showBack;
-  final PageController? controller;
-  final String imagePath; // NEW
+class WelcomeBaseScreen extends StatelessWidget { // NEW
 
   const WelcomeBaseScreen({
     super.key,
@@ -19,6 +12,13 @@ class WelcomeBaseScreen extends StatelessWidget {
     this.showBack = false,
     this.controller,
   });
+  final String title;
+  final String subtitle;
+  final String buttonText;
+  final VoidCallback onNext;
+  final bool showBack;
+  final PageController? controller;
+  final String imagePath;
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +156,7 @@ class WelcomeBaseScreen extends StatelessWidget {
 class TopRoundedClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
-    Path path = Path();
+    final path = Path();
 
     path.lineTo(size.width, 0);
     path.lineTo(size.width, size.height * 0.15);
@@ -164,7 +164,6 @@ class TopRoundedClipper extends CustomClipper<Path> {
     path.arcToPoint(
       Offset(0, size.height * 0.35),
       radius: Radius.circular(size.width / 2),
-      clockwise: true,
     );
 
     path.lineTo(0, 0);

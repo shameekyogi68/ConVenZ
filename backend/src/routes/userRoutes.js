@@ -4,7 +4,7 @@ import {
   registerUser,
   verifyOtp,
   updateUserDetails,
-  updateVendorLocation,
+  updateUserLocation,
   createDefaultPlans,
   getAllPlans,
   getPlansByType,
@@ -18,7 +18,9 @@ import {
   getUserBookings,
   getBookingDetails,
   cancelBooking,
-  updateBookingStatus
+  updateBookingStatus,
+  verifyJobOtp,
+  submitReview
 } from "../controllers/customerBookingController.js";
 import {
   checkUserBlocked,
@@ -67,8 +69,8 @@ router.post("/verify-otp", authLimiter, validate(authSchemas.verifyOtp), checkUs
 router.post("/user/verify-otp", authLimiter, validate(authSchemas.verifyOtp), checkUserBlocked, verifyOtp);
 
 router.post("/update-user", protect, validate(userSchemas.updateProfile), checkUserBlocked, updateUserDetails);
-router.post("/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Protected
-router.post("/user/update-location", protect, validate(userSchemas.updateLocation), updateVendorLocation); // Alias
+router.post("/update-location", protect, validate(userSchemas.updateLocation), updateUserLocation); // Protected
+router.post("/user/update-location", protect, validate(userSchemas.updateLocation), updateUserLocation); // Alias
 router.post("/update-fcm-token", protect, validate(notificationSchemas.updateFcmToken), updateFcmToken);
 router.post("/fcm/update-token", protect, validate(notificationSchemas.updateFcmToken), updateFcmToken);
 
@@ -110,6 +112,14 @@ router.get("/user/bookings/:userId", protect, checkUserBlocked, getUserBookings)
 // Cancel booking
 router.post("/booking/:bookingId/cancel", protect, checkUserBlocked, cancelBooking);
 router.post("/user/booking/:bookingId/cancel", protect, checkUserBlocked, cancelBooking); // Alias
+
+// Verify Job Start OTP (Ensures vendor is present) - BLOCKER 3
+router.post("/booking/:bookingId/verify-otp", protect, checkUserBlocked, verifyJobOtp);
+router.post("/user/booking/:bookingId/verify-otp", protect, checkUserBlocked, verifyJobOtp); // Alias
+
+// Rate Vendor (Review)
+router.post("/booking/:bookingId/review", protect, validate(bookingSchemas.review), checkUserBlocked, submitReview);
+router.post("/user/booking/:bookingId/review", protect, validate(bookingSchemas.review), checkUserBlocked, submitReview); // Alias
 
 // Get single booking details - MUST come last (catches any bookingId)
 router.get("/booking/:bookingId", protect, getBookingDetails);

@@ -1,19 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:go_router/go_router.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:latlong2/latlong.dart';
+
 import '../../../config/app_colors.dart';
 import '../../../widgets/primary_button.dart';
 
 class MapScreen extends StatefulWidget {
-  final String? selectedService;
   
   const MapScreen({super.key, this.selectedService});
+  final String? selectedService;
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -24,10 +26,10 @@ class _MapScreenState extends State<MapScreen> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
 
-  LatLng _center = LatLng(19.0760, 72.8777); // Default Mumbai
-  final String openCageKey = dotenv.env['OPENCAGE_API_KEY'] ?? "";
+  LatLng _center = const LatLng(19.0760, 72.8777); // Default Mumbai
+  final String openCageKey = dotenv.env['OPENCAGE_API_KEY'] ?? '';
 
-  String _selectedAddress = "";
+  String _selectedAddress = '';
   Timer? _debounce;
   bool _isSearching = false;
 
@@ -53,9 +55,8 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Location permissions are permanently denied. Please search manually or enable them in settings."),
+            content: Text('Location permissions are permanently denied. Please search manually or enable them in settings.'),
             backgroundColor: AppColors.dangerRed,
-            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -75,14 +76,14 @@ class _MapScreenState extends State<MapScreen> {
       }
       return pos;
     } catch (e) {
-      debugPrint("GPS Error: $e");
+      debugPrint('GPS Error: $e');
       return null;
     }
   }
 
   Future<void> _getCurrentLocation() async {
-    final pos = await _getPreciseLocation();
-    if (pos == null) return;
+    final Position? pos = await _getPreciseLocation();
+    if (!mounted || pos == null) return;
 
     final newCenter = LatLng(pos.latitude, pos.longitude);
     setState(() => _center = newCenter);
@@ -92,20 +93,28 @@ class _MapScreenState extends State<MapScreen> {
 
   /// 🔍 Search by text
   Future<void> _searchLocation(String query) async {
-    if (query.isEmpty) return;
+    if (query.isEmpty) {
+      return;
+    }
     setState(() => _isSearching = true);
 
     final url =
         'https://api.opencagedata.com/geocode/v1/json?q=$query&key=$openCageKey';
 
     try {
-      final res = await http.get(Uri.parse(url));
-      final data = jsonDecode(res.body);
+      final http.Response res = await http.get(Uri.parse(url));
+      
+      if (!mounted) return;
 
-      if (data['results'] != null && data['results'].isNotEmpty) {
-        final double lat = double.tryParse(data['results'][0]['geometry']['lat'].toString()) ?? 0.0;
-        final double lng = double.tryParse(data['results'][0]['geometry']['lng'].toString()) ?? 0.0;
-        final newCenter = LatLng(lat, lng);
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+
+      final results = data['results'] as List<dynamic>;
+      if (results.isNotEmpty) {
+        final firstResult = results[0] as Map<String, dynamic>;
+        final geometry = firstResult['geometry'] as Map<String, dynamic>;
+        final double lat = double.tryParse(geometry['lat'].toString()) ?? 0.0;
+        final double lng = double.tryParse(geometry['lng'].toString()) ?? 0.0;
+        final LatLng newCenter = LatLng(lat, lng);
 
         _mapController.move(newCenter, 16);
         setState(() => _center = newCenter);
@@ -113,11 +122,11 @@ class _MapScreenState extends State<MapScreen> {
         _reverseGeocode(newCenter);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location not found")),
+          const SnackBar(content: Text('Location not found')),
         );
       }
     } catch (e) {
-      debugPrint("Search error: $e");
+      debugPrint('Search error: $e');
     } finally {
       setState(() => _isSearching = false);
     }
@@ -139,35 +148,40 @@ class _MapScreenState extends State<MapScreen> {
         'https://api.opencagedata.com/geocode/v1/json?q=${position.latitude}+${position.longitude}&key=$openCageKey';
 
     try {
-      final res = await http.get(Uri.parse(url));
-      final data = jsonDecode(res.body);
+      final http.Response res = await http.get(Uri.parse(url));
+      if (!mounted) return;
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
 
-      if (data["results"] != null && data["results"].isNotEmpty) {
-        final comp = data["results"][0]["components"];
+      final results = data['results'] as List<dynamic>;
+      if (results.isNotEmpty) {
+        final firstResult = results[0] as Map<String, dynamic>;
+        final comp = firstResult['components'] as Map<String, dynamic>;
 
-        String placeName = (comp["point_of_interest"] ??
-            comp["hospital"] ??
-            comp["clinic"] ??
-            comp["building"] ??
-            comp["amenity"] ??
-            comp["shop"] ??
-            comp["office"] ??
-            comp["tourism"] ??
-            comp["leisure"] ??
-            "").toString();
+        final placeName = (comp['point_of_interest'] ??
+            comp['hospital'] ??
+            comp['clinic'] ??
+            comp['building'] ??
+            comp['amenity'] ??
+            comp['shop'] ??
+            comp['office'] ??
+            comp['tourism'] ??
+            comp['leisure'] ??
+            '').toString();
 
-        String houseNumber = (comp["house_number"] ?? "").toString();
-        String road = (comp["road"] ??
-            comp["residential"] ??
-            comp["neighbourhood"] ??
-            comp["suburb"] ??
-            "").toString();
-        String city = (comp["city"] ?? comp["town"] ?? comp["village"] ?? "").toString();
-        String state = (comp["state"] ?? "").toString();
-        String postcode = (comp["postcode"] ?? "").toString();
-        String country = (comp["country"] ?? "").toString();
+        final houseNumber = (comp['house_number'] ?? '').toString();
+        var road = (comp['road'] ??
+            comp['residential'] ??
+            comp['neighbourhood'] ??
+            comp['suburb'] ??
+            '').toString();
+        final city = (comp['city'] ?? comp['town'] ?? comp['village'] ?? '').toString();
+        final state = (comp['state'] ?? '').toString();
+        final postcode = (comp['postcode'] ?? '').toString();
+        final country = (comp['country'] ?? '').toString();
 
-        if (road.toLowerCase().contains("unnamed")) road = "";
+        if (road.toLowerCase().contains('unnamed')) {
+          road = '';
+        }
 
         String cleanedAddress = [
           if (placeName.isNotEmpty) placeName,
@@ -177,10 +191,11 @@ class _MapScreenState extends State<MapScreen> {
           if (state.isNotEmpty) state,
           if (postcode.isNotEmpty) postcode,
           if (country.isNotEmpty) country,
-        ].join(", ");
+        ].join(', ');
 
         if (cleanedAddress.trim().isEmpty) {
-          cleanedAddress = (data["results"][0]["formatted"] ?? "").toString();
+          final first = results[0] as Map<String, dynamic>;
+          cleanedAddress = (first['formatted'] ?? '').toString();
         }
 
         setState(() {
@@ -189,7 +204,7 @@ class _MapScreenState extends State<MapScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Reverse geocode error: $e");
+      debugPrint('Reverse geocode error: $e');
     }
   }
 
@@ -252,8 +267,8 @@ class _MapScreenState extends State<MapScreen> {
             right: 20,
             child: FloatingActionButton(
               backgroundColor: Colors.white,
-              child: const Icon(Icons.my_location, color: AppColors.primaryTeal),
               onPressed: _getCurrentLocation,
+              child: const Icon(Icons.my_location, color: AppColors.primaryTeal),
             ),
           ),
 
@@ -293,7 +308,7 @@ class _MapScreenState extends State<MapScreen> {
       textInputAction: TextInputAction.search,
       onSubmitted: _searchLocation,
       decoration: InputDecoration(
-        hintText: "Search city, area...",
+        hintText: 'Search city, area...',
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         suffixIcon: IconButton(
@@ -339,7 +354,7 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            Text("Confirm Location",
+            const Text('Confirm Location',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -352,7 +367,7 @@ class _MapScreenState extends State<MapScreen> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.primaryTeal.withOpacity(0.04),
-                hintText: "Fetching address...",
+                hintText: 'Fetching address...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 contentPadding: const EdgeInsets.all(16),
                 border: OutlineInputBorder(
@@ -365,11 +380,11 @@ class _MapScreenState extends State<MapScreen> {
             SizedBox(
               width: double.infinity,
               child: PrimaryButton(
-                text: "Confirm Location",
+                text: 'Confirm Location',
                 onPressed: () {
                   if (_selectedAddress.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Please wait for address to load")),
+                      const SnackBar(content: Text('Please wait for address to load')),
                     );
                     return;
                   }

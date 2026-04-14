@@ -23,10 +23,19 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
 
       // Decode and verify token
+      /** @type {any} */
       const decoded = jwt.verify(token, JWT_SECRET);
+
+      if (typeof decoded === "string") {
+        return res.status(401).json({ success: false, message: "Invalid token format" });
+      }
 
       // otp and otpExpiry have select:false in the schema — excluded automatically
       req.user = await User.findOne({ user_id: decoded.userId });
+
+      if (req.user && decoded.tokenVersion !== req.user.tokenVersion) {
+        return res.status(401).json({ success: false, message: "Token revoked" });
+      }
 
       if (!req.user) {
         return res.status(401).json({ success: false, message: "User not found, token invalid" });
@@ -50,9 +59,11 @@ export const protect = async (req, res, next) => {
 
 /**
  * Helper to generate JWT Token
+ * @param {string | number} userId
+ * @param {number} tokenVersion
  */
-export const generateToken = (userId) => {
-  return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: process.env.SESSION_EXPIRY || "30d",
+export const generateToken = (userId, tokenVersion = 0) => {
+  return jwt.sign({ userId, tokenVersion }, JWT_SECRET, {
+    expiresIn: /** @type {any} */ (process.env.SESSION_EXPIRY || "30d"),
   });
 };

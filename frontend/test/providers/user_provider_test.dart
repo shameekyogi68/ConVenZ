@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:convenz_customer_app/providers/user_provider.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('UserProvider Tests', () {

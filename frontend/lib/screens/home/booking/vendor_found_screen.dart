@@ -7,13 +7,6 @@ import '../../../widgets/primary_button.dart';
 import '../../../widgets/secondary_button.dart';
 
 class VendorFoundScreen extends StatelessWidget {
-  final String bookingId;
-  final String vendorName;
-  final String vendorPhone;
-  final String vendorAddress;
-  final String service;
-  final String date;
-  final String time;
 
   const VendorFoundScreen({
     super.key,
@@ -25,10 +18,19 @@ class VendorFoundScreen extends StatelessWidget {
     required this.date,
     required this.time,
   });
+  final String bookingId;
+  final String vendorName;
+  final String vendorPhone;
+  final String vendorAddress;
+  final String service;
+  final String date;
+  final String time;
 
   Future<void> _makePhoneCall(String phoneNumber) async {
     final uri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   @override
@@ -209,8 +211,8 @@ class VendorFoundScreen extends StatelessWidget {
 }
 
 class _RowData {
+  const _RowData(this.icon, this.label, this.value);
   final IconData icon;
   final String label;
   final String value;
-  const _RowData(this.icon, this.label, this.value);
 }

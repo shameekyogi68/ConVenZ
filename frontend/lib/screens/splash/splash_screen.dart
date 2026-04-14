@@ -1,5 +1,5 @@
-import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../utils/permission.dart';
 import '../../utils/shared_prefs.dart'; // ✅ Import SharedPrefs
 import '../../widgets/welcome_base_screen.dart';
@@ -12,7 +12,6 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -21,15 +20,17 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   // ✅ Logic to check login state
-  void _checkLoginStatus() async {
+  Future<void> _checkLoginStatus() async {
     // Reduced delay for faster navigation - all initialization done in main()
-    await Future.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     // Check Shared Preferences (already initialized in main)
-    String? userId = SharedPrefs.getUserId();
-    bool isNew = SharedPrefs.getIsNewUser();
+    final String? userId = SharedPrefs.getUserId();
+    final bool isNew = SharedPrefs.getIsNewUser();
 
     if (userId != null) {
       // User is logged in

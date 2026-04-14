@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
 import '../../config/app_colors.dart';
-import 'subscription_plans_page.dart';
+import '../../providers/user_provider.dart';
 import '../../services/location_services.dart';
-import 'my_booking_screen.dart';
-import '../../utils/shared_prefs.dart';
+import '../../services/notification_service.dart';
 import '../../services/subscription_service.dart';
 import '../../utils/blocking_helper.dart';
+import '../../utils/shared_prefs.dart';
 import 'customer_profile_screen.dart';
-import 'package:provider/provider.dart';
-import '../../providers/user_provider.dart';
-import 'widgets/home_header.dart';
+import 'my_booking_screen.dart';
+import 'subscription_plans_page.dart';
 import 'widgets/category_grid.dart';
+import 'widgets/home_header.dart';
 import 'widgets/popular_services.dart';
-import '../../services/notification_service.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key, this.initialTab = 0});
   /// Optional initial tab index forwarded from notification deep links.
   final int initialTab;
-  const HomeScreen({super.key, this.initialTab = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -57,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     LocationService.startLocationTracking();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final UserProvider userProvider = Provider.of<UserProvider>(context, listen: false);
       userProvider.loadInitialData();
       userProvider.syncLocation();
       
@@ -67,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _loadUserSubscription();
     
-    Future.delayed(const Duration(seconds: 3), () {
+    Future<void>.delayed(const Duration(seconds: 3), () {
       if (mounted && _loadingSubscription) {
         setState(() => _loadingSubscription = false);
       }
@@ -81,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _checkUserBlockingStatus() async {
+  Future<void> _checkUserBlockingStatus() async {
     try {
       await BlockingHelper.checkUserStatusOnLaunch(context);
     } catch (_) {}
@@ -89,17 +90,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUserSubscription() async {
     try {
-      final userId = SharedPrefs.getUserId();
+      final String? userId = SharedPrefs.getUserId();
       if (userId == null || userId.isEmpty) {
         setState(() => _loadingSubscription = false);
         return;
       }
 
-      final result = await SubscriptionService.getUserSubscription(userId);
+      final Map<String, dynamic> result = await SubscriptionService.getUserSubscription(userId);
       if (mounted) {
         setState(() {
           if (result['success'] == true && result['data'] != null) {
-            _userSubscription = result['data'];
+            _userSubscription = result['data'] as Map<String, dynamic>?;
           } else {
             _userSubscription = null;
           }
@@ -186,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: const SizedBox(
@@ -200,13 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // If user has active subscription, show subscription details
     if (_userSubscription != null && _userSubscription!['status'] == 'Active') {
-      final planName = _userSubscription!['currentPack'] ?? 'Premium Plan';
-      final expiryDate = _userSubscription!['expiryDate'];
+      final String planName = (_userSubscription!['currentPack'] as String?) ?? 'Premium Plan';
+      final expiryDate = _userSubscription!['expiryDate'] as String?;
       
-      String formattedExpiry = 'Soon';
+      var formattedExpiry = 'Soon';
       if (expiryDate != null) {
         try {
-          final expiry = DateTime.parse(expiryDate);
+          final DateTime expiry = DateTime.parse(expiryDate);
           formattedExpiry = '${expiry.day} ${_getMonthName(expiry.month)}, ${expiry.year}';
         } catch (_) {}
       }
@@ -223,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -240,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      "✓ ACTIVE PLAN",
+                      '✓ ACTIVE PLAN',
                       style: TextStyle(
                         color: Color(0xFF1F465A),
                         fontSize: 10,
@@ -259,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Valid until: $formattedExpiry",
+                    'Valid until: $formattedExpiry',
                     style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
@@ -268,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha:0.15),
+                color: Colors.white.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.verified, color: AppColors.accentMint, size: 40),
@@ -295,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF2C6E80).withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
+            BoxShadow(color: const Color(0xFF2C6E80).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
           ],
         ),
         child: Row(
@@ -312,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      "UPGRADE PLAN",
+                      'UPGRADE PLAN',
                       style: TextStyle(
                         color: Color(0xFF1F465A),
                         fontSize: 10,
@@ -322,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    "Upgrade Your Plan",
+                    'Upgrade Your Plan',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -331,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Get exclusive benefits & premium access",
+                    'Get exclusive benefits & premium access',
                     style: TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
@@ -340,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha:0.15),
+                color: Colors.white.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.card_giftcard, color: AppColors.accentMint, size: 40),
@@ -369,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppColors.accentMint.withValues(alpha:0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(color: AppColors.accentMint.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -380,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  "25% OFF",
+                  '25% OFF',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -389,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "On your first home cleaning service!",
+                  'On your first home cleaning service!',
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 12),
@@ -407,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: const Text("Book Now", style: TextStyle(fontSize: 12)),
+                    child: const Text('Book Now', style: TextStyle(fontSize: 12)),
                   ),
                 )
               ],
@@ -420,8 +421,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchResults() {
-    final query = _searchQuery.toLowerCase();
-    final matches = _allServices
+    final String query = _searchQuery.toLowerCase();
+    final List<Map<String, dynamic>> matches = _allServices
         .where((s) => (s['name'] as String).toLowerCase().contains(query))
         .toList();
 
@@ -449,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withValues(alpha:0.08),
+                  color: AppColors.primaryTeal.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(service['icon'] as IconData,
@@ -493,7 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: AppColors.primaryTeal.withValues(alpha:0.08),
+                    color: AppColors.primaryTeal.withOpacity(0.08),
                     blurRadius: 20,
                     offset: const Offset(0, 8))
               ],
@@ -503,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value.trim()),
               decoration: InputDecoration(
-                hintText: "Search for services...",
+                hintText: 'Search for services...',
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -549,8 +550,8 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _selectedIndex,
           children: [
             _buildHomeContent(),
-            MyBookingsScreen(),
-            SubscriptionPlansPage(),
+            const MyBookingsScreen(),
+            const SubscriptionPlansPage(),
             const CustomerProfileScreen(),
           ],
         ),
@@ -560,7 +561,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 16,
               offset: const Offset(0, -4),
             ),
@@ -579,26 +580,26 @@ class _HomeScreenState extends State<HomeScreen> {
           unselectedFontSize: 11,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
-          items: [
+          items: const [
             BottomNavigationBarItem(
-              icon: const Icon(Icons.home_outlined, size: 24),
-              activeIcon: const Icon(Icons.home_rounded, size: 26),
-              label: "Home",
+              icon: Icon(Icons.home_outlined, size: 24),
+              activeIcon: Icon(Icons.home_rounded, size: 26),
+              label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.calendar_today_outlined, size: 22),
-              activeIcon: const Icon(Icons.calendar_today_rounded, size: 24),
-              label: "Bookings",
+              icon: Icon(Icons.calendar_today_outlined, size: 22),
+              activeIcon: Icon(Icons.calendar_today_rounded, size: 24),
+              label: 'Bookings',
             ),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.workspace_premium_outlined, size: 24),
-              activeIcon: const Icon(Icons.workspace_premium_rounded, size: 26),
-              label: "Plans",
+              icon: Icon(Icons.workspace_premium_outlined, size: 24),
+              activeIcon: Icon(Icons.workspace_premium_rounded, size: 26),
+              label: 'Plans',
             ),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.person_outline_rounded, size: 24),
-              activeIcon: const Icon(Icons.person_rounded, size: 26),
-              label: "Profile",
+              icon: Icon(Icons.person_outline_rounded, size: 24),
+              activeIcon: Icon(Icons.person_rounded, size: 26),
+              label: 'Profile',
             ),
           ],
         ),

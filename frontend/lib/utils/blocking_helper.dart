@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/blocking_service.dart';
+import '../utils/app_logger.dart';
 
 class BlockingHelper {
   
@@ -13,7 +14,7 @@ class BlockingHelper {
     Map<String, dynamic> response,
   ) {
     if (BlockingService.isUserBlocked(response)) {
-      final blockReason = BlockingService.getBlockReason(response);
+      final String blockReason = BlockingService.getBlockReason(response);
       
       // Navigate to blocked screen using GoRouter
       context.go('/blocked', extra: blockReason);
@@ -26,13 +27,14 @@ class BlockingHelper {
   // Call this in main screen or splash screen
   static Future<bool> checkUserStatusOnLaunch(BuildContext context) async {
     try {
-      final response = await BlockingService.checkUserStatus();
+      final Map<String, dynamic> response = await BlockingService.checkUserStatus();
       
       if (response['success'] == true && response['data'] != null) {
-        final isBlocked = response['data']['isBlocked'] ?? false;
+        final data = response['data'] as Map<String, dynamic>;
+        final isBlocked = data['isBlocked'] == true;
         
         if (isBlocked) {
-          final blockReason = response['data']['blockReason'] ?? 
+          final String blockReason = data['blockReason']?.toString() ?? 
                              'Your account has been blocked by admin.';
           
           if (context.mounted) {
@@ -45,7 +47,7 @@ class BlockingHelper {
       
       return false; // User is not blocked
     } catch (e) {
-      print("❌ Error checking user status: $e");
+      AppLogger.e('Error checking user status', e);
       return false;
     }
   }
@@ -59,7 +61,7 @@ class BlockingHelper {
     Future<Map<String, dynamic>> Function() apiCall,
   ) async {
     try {
-      final response = await apiCall();
+      final Map<String, dynamic> response = await apiCall();
       
       // Check if user is blocked in response
       if (context.mounted) {
@@ -69,8 +71,8 @@ class BlockingHelper {
       return response;
     } catch (e) {
       return {
-        "success": false,
-        "message": "API call failed: $e"
+        'success': false,
+        'message': 'API call failed: $e'
       };
     }
   }

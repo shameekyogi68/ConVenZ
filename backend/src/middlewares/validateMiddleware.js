@@ -59,13 +59,20 @@ export const userSchemas = {
  */
 export const bookingSchemas = {
   create: Joi.object({
-    selectedService: Joi.string().required(),
+    selectedService: Joi.string().valid(
+      'Cleaning', 'Plumbing', 'Electrician', 'Painting', 
+      'Moving', 'AC Repair', 'Sofa Cleaning', 'Car Wash'
+    ).required(),
     jobDescription: Joi.string().required(),
-    date: Joi.string().required(),
-    time: Joi.string().required(),
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
+      'string.pattern.base': 'Date must be in YYYY-MM-DD format'
+    }),
+    time: Joi.string().pattern(/^\d{2}:\d{2}(:\d{2})?$/).required().messages({
+      'string.pattern.base': 'Time must be in HH:MM or HH:MM:SS format'
+    }),
     location: Joi.object({
-      latitude: Joi.number().required(),
-      longitude: Joi.number().required(),
+      latitude: Joi.number().min(-90).max(90).required(),
+      longitude: Joi.number().min(-180).max(180).required(),
       address: Joi.string().required()
     }).required()
   }),
@@ -78,6 +85,10 @@ export const bookingSchemas = {
     otpStart: Joi.number().integer().min(1000).max(9999).optional(),
     rejectionReason: Joi.string().max(500).optional(),
   }),
+  review: Joi.object({
+    rating: Joi.number().min(1).max(5).required(),
+    reviewText: Joi.string().max(1000).optional().allow('')
+  }),
 };
 
 /**
@@ -88,3 +99,20 @@ export const notificationSchemas = {
     fcmToken: Joi.string().min(10).required(),
   }),
 };
+
+/**
+ * 🎟️ SUBSCRIPTION VALIDATION SCHEMAS
+ */
+export const subscriptionSchemas = {
+  createPlan: Joi.object({
+    name: Joi.string().required().max(100),
+    price: Joi.number().required().min(0),
+    duration: Joi.string().required().max(50),
+    features: Joi.array().items(Joi.string()).optional(),
+    planType: Joi.string().valid("customer", "vendor", "admin").optional(),
+  }),
+  purchase: Joi.object({
+    planId: Joi.string().required(),
+  }),
+};
+

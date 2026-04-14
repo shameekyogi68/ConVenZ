@@ -6,8 +6,9 @@ import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
 
 class FeedbackScreen extends StatefulWidget {
-  final Booking booking;
   const FeedbackScreen({super.key, required this.booking});
+
+  final Booking booking;
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -168,8 +169,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       duration: const Duration(milliseconds: 1500),
                     ),
                   );
-                  await Future.delayed(const Duration(milliseconds: 1500));
-                  if (context.mounted) context.go('/home');
+                  await Future<void>.delayed(const Duration(milliseconds: 1500));
+                  if (context.mounted) {
+                    context.go('/home');
+                  }
                 },
               ).animate().fade(delay: 300.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
 

@@ -2,22 +2,21 @@ import Plan from "../models/planModel.js";
 import Subscription from "../models/subscriptionModel.js";
 import User from "../models/userModel.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import dayjs from "dayjs";
+
 
 // ─────────────────────────────────────────────
 // Helper: Calculate subscription expiry date
 // ─────────────────────────────────────────────
-const calculateExpiry = (duration) => {
-  const date = new Date();
-  const value = parseInt(duration) || 1;
-  if (duration.includes("year")) {
-    date.setFullYear(date.getFullYear() + value);
-  } else if (duration.includes("month")) {
-    date.setMonth(date.getMonth() + value);
-  } else if (duration.includes("day")) {
-    date.setDate(date.getDate() + value);
-  }
-  return date;
+export const calculateExpiry = (duration) => {
+  const [valueStr, unit] = duration.split(" ");
+  const value = parseInt(valueStr) || 1;
+  const unitMapped = unit.toLowerCase().startsWith("year") ? "year" : unit.toLowerCase().startsWith("month") ? "month" : "day";
+  
+  // dayjs handles month-end overflows (e.g., Jan 31 + 1 month = Feb 28/29) automatically.
+  return dayjs().add(value, unitMapped).toDate();
 };
+
 
 /* ------------------------------------------------------------
    🛠️ ADMIN: CREATE A PLAN
@@ -105,8 +104,8 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
    👤 GET USER'S CURRENT ACTIVE SUBSCRIPTION
 ------------------------------------------------------------ */
 export const getUserSubscription = asyncHandler(async (req, res) => {
-  // Allow fetching by param or from token (for flexibility)
-  const userId = parseInt(req.params.userId) || req.user?.user_id;
+  // ✅ SECURITY FIX: Never use param userId to prevent IDOR
+  const userId = req.user.user_id;
 
   if (!userId) {
     res.status(400);

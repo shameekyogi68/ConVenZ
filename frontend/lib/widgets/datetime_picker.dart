@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Add intl package for formatting
+ 
 import '../config/app_colors.dart';
 
 class CustomDatePicker extends StatelessWidget {
-  final String label;
-  final DateTime? selectedDate;
-  final ValueChanged<DateTime> onDateSelected;
 
   const CustomDatePicker({
     super.key,
@@ -13,6 +11,9 @@ class CustomDatePicker extends StatelessWidget {
     required this.selectedDate,
     required this.onDateSelected,
   });
+  final String label;
+  final DateTime? selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,6 @@ class CustomDatePicker extends StatelessWidget {
               data: Theme.of(context).copyWith(
                 colorScheme: const ColorScheme.light(
                   primary: AppColors.primaryTeal, // Header background color
-                  onPrimary: Colors.white, // Header text color
                   onSurface: AppColors.darkGrey, // Body text color
                 ),
                 textButtonTheme: TextButtonThemeData(
@@ -75,9 +75,6 @@ class CustomDatePicker extends StatelessWidget {
 }
 
 class CustomTimePicker extends StatelessWidget {
-  final String label;
-  final TimeOfDay? selectedTime;
-  final ValueChanged<TimeOfDay> onTimeSelected;
 
   const CustomTimePicker({
     super.key,
@@ -85,6 +82,9 @@ class CustomTimePicker extends StatelessWidget {
     required this.selectedTime,
     required this.onTimeSelected,
   });
+  final String label;
+  final TimeOfDay? selectedTime;
+  final ValueChanged<TimeOfDay> onTimeSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -98,10 +98,9 @@ class CustomTimePicker extends StatelessWidget {
               data: Theme.of(context).copyWith(
                 colorScheme: const ColorScheme.light(
                   primary: AppColors.primaryTeal,
-                  onPrimary: Colors.white,
                   onSurface: AppColors.darkGrey,
                 ),
-                timePickerTheme: TimePickerThemeData(
+                timePickerTheme: const TimePickerThemeData(
                   dialHandColor: AppColors.accentMint,
                   dialBackgroundColor: AppColors.background,
                 ),

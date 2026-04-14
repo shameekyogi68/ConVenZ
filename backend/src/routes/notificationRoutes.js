@@ -8,6 +8,19 @@ import {
 
 const router = express.Router();
 
+// 🔒 ADMIN AUTH MIDDLEWARE
+const adminProtect = (req, res, next) => {
+  const adminSecret = req.headers['x-admin-secret'];
+  if (!process.env.ADMIN_SECRET) {
+    return res.status(500).json({ success: false, message: "Server misconfiguration: ADMIN_SECRET not set" });
+  }
+  if (adminSecret === process.env.ADMIN_SECRET) {
+    next();
+  } else {
+    res.status(401).json({ success: false, message: "Unauthorized: Admin access required" });
+  }
+};
+
 /* ------------------------------------------
    🔔 NOTIFICATION ROUTES
 ------------------------------------------- */
@@ -16,13 +29,13 @@ const router = express.Router();
 router.post("/update-token", updateFcmToken);
 
 // Send notification to a single user
-router.post("/send", sendNotificationToUser);
+router.post("/send", adminProtect, sendNotificationToUser);
 
 // Send notification to multiple users
-router.post("/send-multiple", sendNotificationToMultipleUsers);
+router.post("/send-multiple", adminProtect, sendNotificationToMultipleUsers);
 
 // Send notification to a topic
-router.post("/send-topic", sendNotificationToTopic);
+router.post("/send-topic", adminProtect, sendNotificationToTopic);
 
 // Manual trigger for hourly nudge (CRON_SECRET required in production)
 router.get("/test-hourly-nudge", async (req, res) => {

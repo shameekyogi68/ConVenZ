@@ -1,5 +1,6 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import '../../utils/shared_prefs.dart';
 import '../router/app_router.dart';
 
@@ -20,7 +21,7 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          final token = SharedPrefs.getToken();
+          final String? token = SharedPrefs.getToken();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }

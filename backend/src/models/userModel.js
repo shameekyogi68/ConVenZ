@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import AutoIncrementFactory from "mongoose-sequence";
 
-const AutoIncrement = AutoIncrementFactory(mongoose);
+/** @type {any} */
+const AutoIncrement = AutoIncrementFactory(/** @type {any} */(mongoose));
 
 /* ------------------------------------------
    👤 USER SCHEMA
@@ -64,6 +65,11 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+
     // 🔑 OTP Storage — stored as HMAC-SHA256 hash, never plaintext
     otp: {
       type: String,
@@ -75,13 +81,19 @@ const userSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
   },
   { timestamps: true }
 );
 
 // 🚀 DATABASE INDEXES
 // Note: phone index is declared inline on the field above (index: true)
-userSchema.index({ fcmToken: 1 });           // Faster push token lookup
+userSchema.index({ fcmToken: 1 }, { sparse: true });           // Sparse index: only indexes users with tokens, ignores nulls.
+userSchema.index({ isBlocked: 1, fcmToken: 1 });          // Optimized index for scheduler marketing pushes.
 userSchema.index({ location: "2dsphere" });  // High-performance geospatial search
 
 // Auto-increment user_id ONLY for Users
@@ -90,5 +102,7 @@ userSchema.plugin(AutoIncrement, {
   inc_field: "user_id",
 });
 
-const User = mongoose.model("User", userSchema);
+/** @type {import('./types.js').UserModel} */
+const User = /** @type {any} */ (mongoose.model("User", userSchema));
+
 export default User;

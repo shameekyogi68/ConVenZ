@@ -1,19 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../config/app_colors.dart';
 import '../../../models/booking.dart';
 import '../../../services/booking_service.dart';
 import '../../../widgets/primary_button.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:go_router/go_router.dart';
 
 class BookingTrackingScreen extends StatefulWidget {
-  final String bookingId;
 
   const BookingTrackingScreen({
     super.key,
     required this.bookingId,
   });
+  final String bookingId;
 
   @override
   State<BookingTrackingScreen> createState() => _BookingTrackingScreenState();
@@ -40,7 +42,9 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   void _startPolling() {
     _pollingSubscription = BookingService.pollBookingStatus(widget.bookingId).listen(
       (booking) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _booking = booking;
           _isLoading = false;
@@ -48,7 +52,9 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
         });
       },
       onError: (_) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _isLoading = false;
           _errorMessage = "It's taking longer than expected. Please try again soon.";
@@ -57,17 +63,17 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     );
   }
 
-  void _callVendor() async {
-    final phone = _booking?.vendorPhone;
+  Future<void> _callVendor() async {
+    final String? phone = _booking?.vendorPhone;
     if (phone != null && phone.isNotEmpty) {
-      final uri = Uri.parse('tel:$phone');
+      final Uri uri = Uri.parse('tel:$phone');
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       }
     }
   }
 
-  void _cancelBooking() async {
+  Future<void> _cancelBooking() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -90,9 +96,11 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       ),
     );
 
-    if (confirm == true) {
-      final result = await BookingService.cancelBooking(widget.bookingId);
-      if (!mounted) return;
+    if (confirm ?? false) {
+      final Map<String, dynamic> result = await BookingService.cancelBooking(widget.bookingId);
+      if (!mounted) {
+        return;
+      }
       if (result['success'] == true) {
         setState(() => _isLoading = true);
         _startPolling(); 
@@ -105,7 +113,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Unable to cancel booking at this time.'),
+            content: Text((result['message'] as String?) ?? 'Unable to cancel booking at this time.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -206,38 +214,32 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
         statusIcon = Icons.search;
         statusText = 'Locating Vendor';
         statusDesc = 'We are finding the best-rated vendor for you.';
-        break;
       case 'accepted':
         statusColor = Colors.blue;
         statusIcon = Icons.verified;
         statusText = 'Vendor Assigned';
         statusDesc = 'A professional has been assigned to your request.';
-        break;
       case 'in_progress':
       case 'inprogress':
         statusColor = AppColors.primaryTeal;
         statusIcon = Icons.engineering;
         statusText = 'Service in Progress';
         statusDesc = 'The work is currently being handled.';
-        break;
       case 'completed':
         statusColor = Colors.green;
         statusIcon = Icons.check_circle_outline;
         statusText = 'Success!';
         statusDesc = 'Your home service is successfully completed.';
-        break;
       case 'cancelled':
         statusColor = Colors.grey;
         statusIcon = Icons.cancel_outlined;
         statusText = 'Cancelled';
         statusDesc = 'This request has been cancelled.';
-        break;
       case 'rejected':
         statusColor = Colors.red;
         statusIcon = Icons.error_outline;
         statusText = 'Service Unavailable';
         statusDesc = 'No vendors were available at this time.';
-        break;
       default:
         statusColor = AppColors.darkGrey;
         statusIcon = Icons.info_outline;
@@ -298,7 +300,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   }
 
   Widget _buildProgressTimeline() {
-    final status = _booking!.status.toLowerCase();
+    final String status = _booking!.status.toLowerCase();
     final steps = [
       {'title': 'Booking Created', 'id': 'pending'},
       {'title': 'Vendor Assigned', 'id': 'accepted'},
@@ -307,8 +309,12 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
     ];
     
     int currentIndex = steps.indexWhere((s) => s['id'] == status);
-    if (status == 'inprogress') currentIndex = 2;
-    if (status == 'completed') currentIndex = 3;
+    if (status == 'inprogress') {
+      currentIndex = 2;
+    }
+    if (status == 'completed') {
+      currentIndex = 3;
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -322,7 +328,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Timeline", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text('Timeline', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           for (int i = 0; i < steps.length; i++)
             _buildTimelineStep(
@@ -385,16 +391,16 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
       ),
       child: Column(
         children: [
-          _buildDetailRow(Icons.receipt_long, "Booking ID", "#${_booking!.bookingId}"),
+          _buildDetailRow(Icons.receipt_long, 'Booking ID', '#${_booking!.bookingId}'),
           const Divider(height: 30),
-          _buildDetailRow(Icons.handyman, "Service", _booking!.serviceName),
+          _buildDetailRow(Icons.handyman, 'Service', _booking!.serviceName),
           const Divider(height: 30),
-          _buildDetailRow(Icons.event, "Date Scheduled", _booking!.date),
+          _buildDetailRow(Icons.event, 'Date Scheduled', _booking!.date),
           const Divider(height: 30),
-          _buildDetailRow(Icons.location_on, "Service Area", _booking!.userLocation?['address'] ?? 'N/A'),
+          _buildDetailRow(Icons.location_on, 'Service Area', (_booking!.userLocation?['address'] as String?) ?? 'N/A'),
           if (_booking!.otpStart != null) ...[
             const Divider(height: 30),
-            _buildDetailRow(Icons.vpn_key, "Service OTP", _booking!.otpStart.toString(), isSpaced: true),
+            _buildDetailRow(Icons.vpn_key, 'Service OTP', _booking!.otpStart.toString(), isSpaced: true),
           ]
         ],
       ),
@@ -424,7 +430,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Assigned Vendor", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const Text('Assigned Vendor', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     Text(_booking!.vendorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ],
                 ),
@@ -443,7 +449,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   }
 
   Widget _buildActionButtons() {
-    final status = _booking!.status.toLowerCase();
+    final String status = _booking!.status.toLowerCase();
     final showCancel = status == 'pending' || status == 'accepted';
 
     return Column(

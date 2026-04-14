@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 
 class TextInput extends StatelessWidget {
-  final TextEditingController controller;
-  final String labelText;
-  final IconData icon;
-  final TextInputType? keyboardType;
-  final int? maxLength;
-  final String? prefixText;
-  final int maxLines;
 
   const TextInput({
     super.key,
@@ -20,6 +13,13 @@ class TextInput extends StatelessWidget {
     this.prefixText,
     this.maxLines = 1,
   });
+  final TextEditingController controller;
+  final String labelText;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final int? maxLength;
+  final String? prefixText;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {

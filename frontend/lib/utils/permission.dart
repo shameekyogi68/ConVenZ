@@ -6,7 +6,7 @@ class PermissionService {
   // without creating an instance of the class.
   static Future<void> requestInitialPermissions() async {
     // Check and request Location
-    var locationStatus = await Permission.location.status;
+    final PermissionStatus locationStatus = await Permission.location.status;
 
     // .isDenied includes "not asked yet" or "denied once".
     if (locationStatus.isDenied) {
@@ -14,7 +14,7 @@ class PermissionService {
     }
 
     // Check and request Notification
-    var notificationStatus = await Permission.notification.status;
+    final PermissionStatus notificationStatus = await Permission.notification.status;
     if (notificationStatus.isDenied) {
       await Permission.notification.request();
     }

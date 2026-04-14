@@ -1,20 +1,21 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:go_router/go_router.dart';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../config/app_colors.dart';
-import '../../../widgets/secondary_button.dart';
 import '../../../services/booking_service.dart';
 
 class VendorSearchScreen extends StatefulWidget {
-  final String bookingId;
-  final String serviceName;
 
   const VendorSearchScreen({
     super.key,
     required this.bookingId,
     required this.serviceName,
   });
+  final String bookingId;
+  final String serviceName;
 
   @override
   State<VendorSearchScreen> createState() => _VendorSearchScreenState();
@@ -43,7 +44,9 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
     )..repeat();
 
     _countTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) setState(() => _secondsElapsed++);
+      if (mounted) {
+        setState(() => _secondsElapsed++);
+      }
     });
 
     _timeoutTimer = Timer(const Duration(seconds: 60), () {
@@ -66,7 +69,9 @@ class _VendorSearchScreenState extends State<VendorSearchScreen>
   }
 
   String get _elapsedLabel {
-    if (_secondsElapsed < 60) return '${_secondsElapsed}s';
+    if (_secondsElapsed < 60) {
+      return '${_secondsElapsed}s';
+    }
     return '${_secondsElapsed ~/ 60}m ${_secondsElapsed % 60}s';
   }
 

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+
 import '../../config/app_colors.dart';
-import '../../widgets/primary_button.dart';
-import '../../widgets/text_input.dart';
 import '../../services/auth_service.dart';
 import '../../utils/shared_prefs.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/text_input.dart';
 
 class UserDetailsScreen extends StatefulWidget {
-  final PageController controller;
   const UserDetailsScreen({super.key, required this.controller});
+  final PageController controller;
 
   @override
   State<UserDetailsScreen> createState() => _UserDetailsScreenState();
@@ -24,10 +25,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
     super.dispose();
   }
 
-  void continueNext() async {
+  Future<void> continueNext() async {
     FocusScope.of(context).unfocus();
 
-    final name = nameController.text.trim();
+    final String name = nameController.text.trim();
 
     if (name.isEmpty) {
       _showError('Please enter your full name');
@@ -42,15 +43,17 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       return;
     }
 
-    final phone = SharedPrefs.getPhone();
+    final String? phone = SharedPrefs.getPhone();
     if (phone == null) {
       _showError('Phone number missing. Please restart onboarding.');
       return;
     }
 
     setState(() => _isLoading = true);
-    final response = await AuthService.updateUserDetails(phone, name, selectedGender!);
-    if (!mounted) return;
+    final Map<String, dynamic> response = await AuthService.updateUserDetails(phone, name, selectedGender!);
+    if (!mounted) {
+      return;
+    }
     setState(() => _isLoading = false);
 
     if (response['success'] == true) {
@@ -138,7 +141,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                         borderRadius: BorderRadius.circular(100),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha:0.05),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),

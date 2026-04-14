@@ -28,8 +28,14 @@ const subscriptionSchema = new mongoose.Schema(
 );
 
 // 🚀 ELITE DATABASE ARCHITECTURE INDEXES
-subscriptionSchema.index({ userId: 1, status: 1 }); // Ultra-fast lookup for active user subscriptions
-subscriptionSchema.index({ expiryDate: 1 }); // Fast expiry sorting and range queries
+subscriptionSchema.index({ userId: 1, status: 1, expiryDate: 1 }); // Ultra-fast lookup for active user subscriptions with date filter
+subscriptionSchema.index(
+  { userId: 1, status: 1 },
+  { unique: true, partialFilterExpression: { status: "Active" } }
+); // DB-level enforcement: a user can only have ONE "Active" subscription at any time.
+subscriptionSchema.index({ expiryDate: 1 }); // Standalone index for global expiry cleanup jobs
 
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
+/** @type {import('./types.js').SubscriptionModel} */
+const Subscription = /** @type {any} */ (mongoose.model("Subscription", subscriptionSchema));
+
 export default Subscription;

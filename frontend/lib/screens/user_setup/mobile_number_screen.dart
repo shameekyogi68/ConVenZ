@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../widgets/primary_button.dart';
-import '../../widgets/text_input.dart';
+
 import '../../config/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../utils/shared_prefs.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/text_input.dart';
 
 class MobileNumberScreen extends StatefulWidget {
-  final PageController controller;
   const MobileNumberScreen({super.key, required this.controller});
+  final PageController controller;
 
   @override
   State<MobileNumberScreen> createState() => _MobileNumberScreenState();
@@ -24,11 +24,11 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
     super.dispose();
   }
 
-  void sendOtp() async {
+  Future<void> sendOtp() async {
     // Dismiss keyboard first
     FocusScope.of(context).unfocus();
 
-    final phone = phoneController.text.trim();
+    final String phone = phoneController.text.trim();
 
     // Validate: exactly 10 digits
     if (phone.length != 10 || !RegExp(r'^\d{10}$').hasMatch(phone)) {
@@ -47,9 +47,11 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
     setState(() => _isLoading = true);
 
     await SharedPrefs.savePhone(phone);
-    final response = await AuthService.registerUser(phone);
+    final Map<String, dynamic> response = await AuthService.registerUser(phone);
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _isLoading = false);
 
     if (response['success'] == true) {
@@ -60,7 +62,7 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response['message'] ?? 'Something went wrong. Please try again.'),
+          content: Text(response['message'] as String? ?? 'Something went wrong. Please try again.'),
           backgroundColor: AppColors.dangerRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -7,8 +7,8 @@ import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
 
 class BookingOtpScreen extends StatefulWidget {
-  final Booking booking;
   const BookingOtpScreen({super.key, required this.booking});
+  final Booking booking;
 
   @override
   State<BookingOtpScreen> createState() => _BookingOtpScreenState();
@@ -17,7 +17,7 @@ class BookingOtpScreen extends StatefulWidget {
 class _BookingOtpScreenState extends State<BookingOtpScreen> {
   @override
   Widget build(BuildContext context) {
-    final otp = widget.booking.otpStart?.toString() ?? '----';
+    final String otp = widget.booking.otpStart?.toString() ?? '----';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -35,7 +35,6 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 32),
 

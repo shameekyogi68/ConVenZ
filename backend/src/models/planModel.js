@@ -12,4 +12,10 @@ const planSchema = new mongoose.Schema({
 // 🚀 ELITE DATABASE ARCHITECTURE INDEXES
 planSchema.index({ planType: 1, active: 1 }); // Extremely fast lookup when grouping plans on the frontend
 
-export default mongoose.model("Plan", planSchema);
+/** @typedef {import('./types.js').PlanModel} PlanModel */
+/** @type {PlanModel} */
+const Plan = /** @type {any} */ (mongoose.model("Plan", planSchema));
+
+
+
+export default Plan;

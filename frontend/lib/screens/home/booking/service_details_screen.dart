@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../config/app_colors.dart';
-import '../../../widgets/primary_button.dart';
-import '../../../widgets/datetime_picker.dart';
 import '../../../services/booking_service.dart';
 import '../../../services/location_services.dart';
 import '../../../utils/blocking_helper.dart';
+import '../../../widgets/datetime_picker.dart';
+import '../../../widgets/primary_button.dart';
 
 class ServiceDetailsScreen extends StatefulWidget {
-  final String address;
-  final String? selectedService;
-  final double? latitude;
-  final double? longitude;
 
   const ServiceDetailsScreen({
     super.key,
@@ -23,6 +19,10 @@ class ServiceDetailsScreen extends StatefulWidget {
     this.latitude,
     this.longitude,
   });
+  final String address;
+  final String? selectedService;
+  final double? latitude;
+  final double? longitude;
 
   @override
   State<ServiceDetailsScreen> createState() => _ServiceDetailsScreenState();
@@ -40,7 +40,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     super.dispose();
   }
 
-  void _createBooking() async {
+  Future<void> _createBooking() async {
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -54,6 +54,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       return;
     }
 
+    final String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+    final String formattedTime = _selectedTime!.format(context);
+
     setState(() => _isLoading = true);
 
     try {
@@ -61,7 +64,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
       double? lng = widget.longitude;
 
       if (lat == null || lng == null) {
-        Position? position = await LocationService.determinePosition();
+        final Position? position = await LocationService.determinePosition();
         if (position != null) {
           lat = position.latitude;
           lng = position.longitude;
@@ -84,10 +87,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         return;
       }
 
-      final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-      final formattedTime = _selectedTime!.format(context);
-
-      final result = await BookingService.createBooking(
+      final Map<String, dynamic> result = await BookingService.createBooking(
         selectedService: widget.selectedService ?? 'General Service',
         selectedDate: formattedDate,
         selectedTime: formattedTime,
@@ -103,16 +103,20 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         setState(() => _isLoading = false);
         BlockingHelper.handleBlockingResponse(context, result);
 
-        if (result['success'] == true) {
-          final String bookingId = result['data']?['_id'] ?? result['bookingId'] ?? '';
+        final success = result['success'] == true;
+        final blocked = result['blocked'] == true;
+
+        if (success) {
+          final Map<String, dynamic>? data = result['data'] is Map<String, dynamic> ? result['data'] as Map<String, dynamic> : null;
+          final String bookingId = ((data?['_id'] ?? result['bookingId']) as Object?)?.toString() ?? '';
           context.go('/vendorSearching', extra: {
             'bookingId': bookingId,
             'serviceName': widget.selectedService ?? 'General Service',
           });
-        } else if (result['blocked'] != true) {
+        } else if (!blocked) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Failed to create booking'),
+              content: Text((result['message'] as Object?)?.toString() ?? 'Failed to create booking'),
               backgroundColor: Colors.red.shade600,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -267,8 +271,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
               const SizedBox(height: 36),
 
-              _isLoading
-                  ? Center(
+              if (_isLoading) Center(
                       child: Column(
                         children: [
                           const CircularProgressIndicator(color: AppColors.primaryTeal, strokeWidth: 3),
@@ -276,8 +279,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
                           Text('Creating your booking...', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
                         ],
                       ),
-                    )
-                  : PrimaryButton(
+                    ) else PrimaryButton(
                       text: 'Confirm Booking',
                       onPressed: _createBooking,
                     ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),

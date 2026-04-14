@@ -4,7 +4,7 @@ import 'package:convenz_customer_app/models/booking.dart';
 void main() {
   group('Booking Model Tests', () {
     test('fromJson correctly parses valid backend JSON', () {
-      final json = {
+      final Map<String, Object> json = {
         '_id': 'abc123',
         'booking_id': 1,
         'userId': 42,
@@ -70,7 +70,7 @@ void main() {
         status: 'pending',
       );
 
-      final json = booking.toJson();
+      final Map<String, dynamic> json = booking.toJson();
 
       expect(json['_id'], '123');
       expect(json['booking_id'], 5);

@@ -1,24 +1,24 @@
-import '../services/api_service.dart';
-import '../services/notification_service.dart';
-import '../utils/shared_prefs.dart';
 import '../utils/address_formatter.dart';
+import '../utils/shared_prefs.dart';
+import 'api_service.dart';
+import 'notification_service.dart';
 
 class AuthService {
   /// Register user with phone and FCM token
   static Future<Map<String, dynamic>> registerUser(String phone) async {
-    final String? fcmToken = NotificationService.getFcmToken();
+    final String? fcmToken = NotificationService.fcmToken;
 
-    final res = await ApiService.post("/user/register", {
-      "phone": phone,
-      if (fcmToken != null && fcmToken.isNotEmpty) "fcmToken": fcmToken,
+    final Map<String, dynamic> res = await ApiService.post('/user/register', {
+      'phone': phone,
+      if (fcmToken != null && fcmToken.isNotEmpty) 'fcmToken': fcmToken,
     });
 
-    if (res["success"] == true) {
+    if (res['success'] == true) {
       await SharedPrefs.savePhone(phone);
-      if (res["userId"] != null) {
-        await SharedPrefs.saveUserId(res["userId"].toString());
+      if (res['userId'] != null) {
+        await SharedPrefs.saveUserId(res['userId'].toString());
       }
-      await SharedPrefs.saveIsNewUser(res["isNewUser"] ?? true);
+      await SharedPrefs.saveIsNewUser(res['isNewUser'] as bool? ?? true);
       // Refresh and send FCM token as a backup after registration
       NotificationService.refreshAndSendToken().catchError((_) {});
     }
@@ -28,21 +28,21 @@ class AuthService {
   /// Verify OTP and save auth token
   static Future<Map<String, dynamic>> verifyOtp(
       String phone, String otp) async {
-    final res = await ApiService.post(
-        "/user/verify-otp", {"phone": phone, "otp": otp});
+    final Map<String, dynamic> res = await ApiService.post(
+        '/user/verify-otp', {'phone': phone, 'otp': otp});
 
-    if (res["success"] == true) {
-      if (res["token"] != null) {
-        await SharedPrefs.saveToken(res["token"]);
+    if (res['success'] == true) {
+      if (res['token'] != null) {
+        await SharedPrefs.saveToken(res['token'] as String);
       }
 
-      final userId = res["userId"]?.toString() ??
-          res["user"]?["user_id"]?.toString();
+      final String? userId = res['userId']?.toString() ??
+          (res['user'] as Map<String, dynamic>?)?['user_id']?.toString();
       if (userId != null) {
         await SharedPrefs.saveUserId(userId);
       }
 
-      await SharedPrefs.saveIsNewUser(res["isNewUser"] ?? true);
+      await SharedPrefs.saveIsNewUser(res['isNewUser'] as bool? ?? true);
       NotificationService.refreshAndSendToken().catchError((_) {});
     }
     return res;
@@ -51,12 +51,12 @@ class AuthService {
   /// Update user profile details (name, gender)
   static Future<Map<String, dynamic>> updateUserDetails(
       String _, String name, String gender) async {
-    final res = await ApiService.post("/update-user", {
-      "name": name,
-      "gender": gender,
+    final Map<String, dynamic> res = await ApiService.post('/update-user', {
+      'name': name,
+      'gender': gender,
     });
 
-    if (res["success"] == true) {
+    if (res['success'] == true) {
       await SharedPrefs.saveUserName(name);
       await SharedPrefs.saveGender(gender);
       await SharedPrefs.saveIsNewUser(false);
@@ -66,7 +66,7 @@ class AuthService {
 
   /// Get the user's full profile from the backend
   static Future<Map<String, dynamic>> getUserDetails(String userId) async {
-    return ApiService.get("/user/profile/$userId");
+    return ApiService.get('/user/profile/$userId');
   }
 
   /// Update the user's current location (with reverse geocoding)
@@ -75,10 +75,10 @@ class AuthService {
     final String cleanAddress =
         await AddressFormatter.getCleanAddress(latitude, longitude);
 
-    return ApiService.post("/user/update-location", {
-      "latitude": latitude,
-      "longitude": longitude,
-      "address": cleanAddress,
+    return ApiService.post('/user/update-location', {
+      'latitude': latitude,
+      'longitude': longitude,
+      'address': cleanAddress,
     });
   }
 }

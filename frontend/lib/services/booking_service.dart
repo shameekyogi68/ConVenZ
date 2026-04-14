@@ -1,7 +1,7 @@
 import 'dart:async';
-import '../services/api_service.dart';
-import '../utils/shared_prefs.dart';
 import '../models/booking.dart';
+import '../utils/shared_prefs.dart';
+import 'api_service.dart';
 
 class BookingService {
   // ─────────────────────────────────────────────
@@ -10,13 +10,15 @@ class BookingService {
   static Future<List<Booking>> getUserBookings() async {
     try {
       final String? userId = SharedPrefs.getUserId();
-      if (userId == null || userId.isEmpty) return [];
+      if (userId == null || userId.isEmpty) {
+        return [];
+      }
 
       // Backend route: GET /api/user/bookings/:userId
-      final res = await ApiService.get("/user/bookings/$userId");
+      final Map<String, dynamic> res = await ApiService.get('/user/bookings/$userId');
 
       if (res['success'] == true && res['data'] != null) {
-        final List<dynamic> data = res['data'] as List<dynamic>;
+        final data = res['data'] as List<dynamic>;
         return data
             .map((json) => Booking.fromJson(json as Map<String, dynamic>))
             .toList();
@@ -40,22 +42,22 @@ class BookingService {
     try {
       final String? userId = SharedPrefs.getUserId();
       if (userId == null || userId.isEmpty) {
-        return {"success": false, "message": "User not logged in"};
+        return {'success': false, 'message': 'User not logged in'};
       }
 
       // ✅ Field names exactly match backend Joi validation schema
-      final bookingData = {
-        "selectedService": selectedService,
-        "date": selectedDate,
-        "time": selectedTime,
-        "location": userLocation,
-        "jobDescription": jobDescription.isEmpty ? selectedService : jobDescription,
+      final Map<String, dynamic> bookingData = {
+        'selectedService': selectedService,
+        'date': selectedDate,
+        'time': selectedTime,
+        'location': userLocation,
+        'jobDescription': jobDescription.isEmpty ? selectedService : jobDescription,
       };
 
       // Backend route: POST /api/user/booking/create (protected)
-      return await ApiService.post("/user/booking/create", bookingData);
+      return await ApiService.post('/user/booking/create', bookingData);
     } catch (e) {
-      return {"success": false, "message": "Failed to create booking: $e"};
+      return {'success': false, 'message': 'Failed to create booking: $e'};
     }
   }
 
@@ -65,7 +67,7 @@ class BookingService {
   static Future<Booking?> getBookingById(String bookingId) async {
     try {
       // Backend route: GET /api/user/booking/:bookingId
-      final res = await ApiService.get("/user/booking/$bookingId");
+      final Map<String, dynamic> res = await ApiService.get('/user/booking/$bookingId');
 
       if (res['success'] == true && res['data'] != null) {
         return Booking.fromJson(res['data'] as Map<String, dynamic>);
@@ -83,13 +85,15 @@ class BookingService {
     const terminalStatuses = {'completed', 'cancelled', 'rejected'};
     while (true) {
       try {
-        final booking = await getBookingById(bookingId);
+        final Booking? booking = await getBookingById(bookingId);
         yield booking;
-        if (booking != null && terminalStatuses.contains(booking.status)) break;
-        await Future.delayed(const Duration(seconds: 5));
+        if (booking != null && terminalStatuses.contains(booking.status)) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(seconds: 5));
       } catch (_) {
         yield null;
-        await Future.delayed(const Duration(seconds: 5));
+        await Future<void>.delayed(const Duration(seconds: 5));
       }
     }
   }
@@ -100,9 +104,9 @@ class BookingService {
   static Future<Map<String, dynamic>> cancelBooking(String bookingId) async {
     try {
       // Backend route: POST /api/user/booking/:bookingId/cancel
-      return await ApiService.post("/user/booking/$bookingId/cancel", {});
+      return await ApiService.post('/user/booking/$bookingId/cancel', {});
     } catch (e) {
-      return {"success": false, "message": "Failed to cancel booking: $e"};
+      return {'success': false, 'message': 'Failed to cancel booking: $e'};
     }
   }
 }

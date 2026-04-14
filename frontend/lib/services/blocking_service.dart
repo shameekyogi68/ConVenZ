@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../utils/shared_prefs.dart';
 
@@ -9,15 +10,15 @@ class BlockingService {
   // Endpoint: GET /api/user/admin/check-status/:userId
   static Future<Map<String, dynamic>> checkUserStatus() async {
     try {
-      String? userId = SharedPrefs.getUserId();
+      final String? userId = SharedPrefs.getUserId();
       if (userId == null) {
         return {
-          "success": false,
-          "message": "User not logged in"
+          'success': false,
+          'message': 'User not logged in'
         };
       }
 
-      final response = await ApiService.get("/user/admin/check-status/$userId");
+      final Map<String, dynamic> response = await ApiService.get('/user/admin/check-status/$userId');
       
       // Response structure:
       // {
@@ -32,10 +33,10 @@ class BlockingService {
       
       return response;
     } catch (e) {
-      print("❌ Error checking block status: $e");
+      debugPrint('❌ Error checking block status: $e');
       return {
-        "success": false,
-        "message": "Failed to check status: $e"
+        'success': false,
+        'message': 'Failed to check status: $e'
       };
     }
   }
@@ -44,9 +45,10 @@ class BlockingService {
   // CHECK IF RESPONSE INDICATES BLOCKED USER
   // ============================================
   static bool isUserBlocked(Map<String, dynamic> response) {
+    final dynamic data = response['data'];
     return response['blocked'] == true || 
            response['statusCode'] == 403 ||
-           (response['data'] != null && response['data']['isBlocked'] == true);
+           (data is Map<String, dynamic> && data['isBlocked'] == true);
   }
 
   // ============================================
@@ -54,13 +56,18 @@ class BlockingService {
   // ============================================
   static String getBlockReason(Map<String, dynamic> response) {
     // Check direct blockReason field
-    if (response['blockReason'] != null && response['blockReason'].isNotEmpty) {
-      return response['blockReason'];
+    final dynamic blockReason = response['blockReason'];
+    if (blockReason != null && blockReason.toString().isNotEmpty) {
+      return blockReason.toString();
     }
     
     // Check data.blockReason field
-    if (response['data'] != null && response['data']['blockReason'] != null) {
-      return response['data']['blockReason'];
+    final dynamic data = response['data'];
+    if (data is Map<String, dynamic>) {
+      final dynamic reason = data['blockReason'];
+      if (reason != null && reason.toString().isNotEmpty) {
+        return reason.toString();
+      }
     }
     
     // Default message
@@ -73,17 +80,17 @@ class BlockingService {
   // Endpoint: POST /api/user/admin/block-user
   static Future<Map<String, dynamic>> blockUser(String userId, String reason) async {
     try {
-      final response = await ApiService.post("/user/admin/block-user", {
-        "userId": userId,
-        "blockReason": reason,
+      final Map<String, dynamic> response = await ApiService.post('/user/admin/block-user', {
+        'userId': userId,
+        'blockReason': reason,
       });
       
       return response;
     } catch (e) {
-      print("❌ Error blocking user: $e");
+      debugPrint('❌ Error blocking user: $e');
       return {
-        "success": false,
-        "message": "Failed to block user: $e"
+        'success': false,
+        'message': 'Failed to block user: $e'
       };
     }
   }
@@ -94,16 +101,16 @@ class BlockingService {
   // Endpoint: POST /api/user/admin/unblock-user
   static Future<Map<String, dynamic>> unblockUser(String userId) async {
     try {
-      final response = await ApiService.post("/user/admin/unblock-user", {
-        "userId": userId,
+      final Map<String, dynamic> response = await ApiService.post('/user/admin/unblock-user', {
+        'userId': userId,
       });
       
       return response;
     } catch (e) {
-      print("❌ Error unblocking user: $e");
+      debugPrint('❌ Error unblocking user: $e');
       return {
-        "success": false,
-        "message": "Failed to unblock user: $e"
+        'success': false,
+        'message': 'Failed to unblock user: $e'
       };
     }
   }

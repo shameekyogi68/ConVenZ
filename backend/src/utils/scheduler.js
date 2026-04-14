@@ -1,6 +1,10 @@
 import cron from "node-cron";
 import User from "../models/userModel.js";
+import Vendor from "../models/vendorModel.js";
+import Booking from "../models/bookingModel.js";
+import Subscription from "../models/subscriptionModel.js";
 import { sendMultipleNotifications } from "./sendNotification.js";
+import logger from "./logger.js";
 
 /**
  * ⏰ MARKETING NOTIFICATION SCHEDULER (PROFESSIONAL VERSION)
@@ -44,12 +48,7 @@ const QUIET_HOUR_START = 22;
 const QUIET_HOUR_END = 7;
 
 const getIstHour = () => {
-  const now = new Date();
-  const utcHour = now.getUTCHours();
-  const utcMinutes = now.getUTCMinutes();
-  let istHour = utcHour + 5;
-  if (utcMinutes + 30 >= 60) istHour += 1;
-  return istHour % 24;
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })).getHours();
 };
 
 const isQuietHour = (istHour) => {
@@ -61,23 +60,26 @@ const getMessageForHour = (istHour) => {
 };
 
 export const triggerHourlyNudge = async (isManual = false) => {
+  // Only the primary instance runs marketing jobs (if scaled on Render)
+  if (process.env.RENDER_INSTANCE_ID && process.env.RENDER_INSTANCE_ID !== "0") return;
+
   const now = Date.now();
   
   // 🛡️ Prevent rapid-fire notifications (e.g. from frequent server restarts)
   // Ensure at least 45 minutes pass between marketing nudges
   if (!isManual && lastRunAt && (now - lastRunAt) < 45 * 60 * 1000) {
     const minutesSince = Math.floor((now - lastRunAt) / 60000);
-    console.log(`🕒 [SCHEDULER] Skipping nudge. Last one sent just ${minutesSince} mins ago.`);
+    logger.info(`🕒 [SCHEDULER] Skipping nudge. Last one sent just ${minutesSince} mins ago.`);
     return { skipped: true, reason: "RECENT_NUDGE" };
   }
 
   const startTime = now;
   const currentHour = getIstHour();
-  console.log(`\n🕒 [SCHEDULER] Running for IST Hour ${currentHour}:00 | ${new Date().toISOString()}`);
+  logger.info(`🕒 [SCHEDULER] Running for IST Hour ${currentHour}:00 | ${new Date().toISOString()}`);
 
   // 🔕 Quiet Hours: skip marketing between 10PM and 7AM IST
-  if (!isManual && isQuietHour(currentHour)) {
-    console.log(`🔕 [SCHEDULER] Quiet hours (${QUIET_HOUR_START}:00–${QUIET_HOUR_END}:00 IST). Skipping nudge.`);
+  if (isQuietHour(currentHour)) {
+    logger.info(`🔕 [SCHEDULER] Quiet hours (${QUIET_HOUR_START}:00–${QUIET_HOUR_END}:00 IST). Skipping nudge.`);
     return { skipped: true, reason: "QUIET_HOURS" };
   }
 
@@ -94,14 +96,14 @@ export const triggerHourlyNudge = async (isManual = false) => {
       .filter((t) => typeof t === "string" && t.length > 50);
 
     if (tokens.length === 0) {
-      console.log("ℹ️  [SCHEDULER] 0 eligible users found. Skipping nudge.");
+      logger.info("ℹ️  [SCHEDULER] 0 eligible users found. Skipping nudge.");
       return { sent: 0, total: users.length, skipped: true };
     }
 
     const { title, body } = getMessageForHour(currentHour);
     const data = { type: "MARKETING_NUDGE", hour: String(currentHour), clickAction: "FLUTTER_NOTIFICATION_CLICK" };
 
-    console.log(`📡 [SCHEDULER] Dispatching "${title}" to ${tokens.length} users...`);
+    logger.info(`📡 [SCHEDULER] Dispatching "${title}" to ${tokens.length} users...`);
 
     const CHUNK_SIZE = 500;
     let totalSent = 0;
@@ -115,7 +117,7 @@ export const triggerHourlyNudge = async (isManual = false) => {
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`✅ [SCHEDULER] Success: ${totalSent} | Failure: ${totalFailure} | Time: ${elapsed}s`);
+    logger.info(`✅ [SCHEDULER] Success: ${totalSent} | Failure: ${totalFailure} | Time: ${elapsed}s`);
     
     // ✅ LOCK: Do not send another nudge for 45 minutes
     lastRunAt = Date.now();
@@ -123,7 +125,7 @@ export const triggerHourlyNudge = async (isManual = false) => {
     return { sent: totalSent, failure: totalFailure, elapsed };
 
   } catch (error) {
-    console.error(`❌ [SCHEDULER] Fatal Error: ${error.message}`);
+    logger.error(`❌ [SCHEDULER] Fatal Error: ${error.message}`);
     throw error;
   }
 };
@@ -132,11 +134,70 @@ const startHourlyNotifications = () => {
   /**
    * Run every hour exactly at the top of the hour in Indian Standard Time (IST)
    */
-  cron.schedule("0 * * * *", triggerHourlyNudge, {
+  cron.schedule("0 * * * *", () => triggerHourlyNudge(false), {
     timezone: "Asia/Kolkata"
   });
   
-  console.log("🚀 [SCHEDULER] Automated Hourly Marketing initialized. (0 * * * *)");
+  cron.schedule("*/10 * * * *", async () => {
+    if (process.env.RENDER_INSTANCE_ID && process.env.RENDER_INSTANCE_ID !== "0") return;
+
+    try {
+      const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const staleBookings = await Booking.updateMany(
+        { status: "pending", createdAt: { $lte: thirtyMinsAgo } },
+        { $set: { status: "cancelled", rejectionReason: "System Timeout: No vendor accepted within 30 minutes" } }
+      );
+      if (staleBookings.modifiedCount > 0) {
+        logger.info(`🧹 [CLEANUP] Cancelled ${staleBookings.modifiedCount} stale pending bookings.`);
+      }
+    } catch (error) {
+      logger.error(`❌ [CLEANUP] Error: ${error.message}`);
+    }
+  }, { timezone: "Asia/Kolkata" });
+
+  cron.schedule("5 0 * * *", async () => {
+    if (process.env.RENDER_INSTANCE_ID && process.env.RENDER_INSTANCE_ID !== "0") return;
+
+    try {
+      const now = new Date();
+      
+      // 1. Find all active subscriptions that have expired
+      const expiredSubs = await Subscription.find({
+        status: "Active",
+        expiryDate: { $lte: now }
+      }).lean();
+
+      if (expiredSubs.length === 0) return;
+
+      const expiredIds = expiredSubs.map(s => s._id);
+
+      // 2. Mark subscriptions as Expired in DB
+      await Subscription.updateMany(
+        { _id: { $in: expiredIds } },
+        { $set: { status: "Expired" } }
+      );
+
+      // 3. Nullify references by searching for any User or Vendor holding an expired ObjectId
+      const userUpdate = await User.updateMany(
+        { subscription: { $in: expiredIds } },
+        { $set: { subscription: null } }
+      );
+
+      const vendorUpdate = await Vendor.updateMany(
+        { subscription: { $in: expiredIds } },
+        { $set: { subscription: null } }
+      );
+
+      logger.info(`💎 [SUBSCRIPTION] Expired ${expiredIds.length} subscriptions. References cleared for ${userUpdate.modifiedCount} users and ${vendorUpdate.modifiedCount} vendors.`);
+      
+    } catch (error) {
+      logger.error(`❌ [SUBSCRIPTION] Cleanup Error: ${error.message}`);
+    }
+  }, { timezone: "Asia/Kolkata" });
+  
+  if (!process.env.RENDER_INSTANCE_ID || process.env.RENDER_INSTANCE_ID === "0") {
+    logger.info("🚀 [SCHEDULER] Automated Hourly Marketing & Cleanup initialized.");
+  }
 };
 
 export default startHourlyNotifications;

@@ -1,5 +1,46 @@
 /// Booking model — maps to the ConVenZ backend bookingModel.js schema
-class Booking {
+class Booking { // Subscription-based model
+
+  const Booking({
+    required this.id,
+    required this.bookingId,
+    required this.userId,
+    this.vendorId,
+    required this.selectedService,
+    required this.jobDescription,
+    required this.date,
+    required this.time,
+    required this.status,
+    this.location,
+    this.otpStart,
+    this.distance,
+    this.createdAt,
+    this.updatedAt,
+    this.vendor,
+  });
+
+  factory Booking.fromJson(Map<String, dynamic> json) {
+    // Handle both flat and nested 'vendor' object from backend
+    final vendorData = json['vendor'] as Map<String, dynamic>?;
+    
+    return Booking(
+      id: json['_id']?.toString() ?? '',
+      bookingId: (json['booking_id'] as num?)?.toInt() ?? 0,
+      userId: (json['userId'] as num?)?.toInt() ?? 0,
+      vendorId: json['vendorId'] != null ? (json['vendorId'] as num?)?.toInt() : null,
+      selectedService: json['selectedService'] as String? ?? 'Service',
+      jobDescription: json['jobDescription'] as String? ?? '',
+      date: json['date'] as String? ?? '',
+      time: json['time'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      location: json['location'] as Map<String, dynamic>?,
+      otpStart: json['otpStart'] != null ? (json['otpStart'] as num).toInt() : null,
+      distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
+      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'] as String) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'] as String) : null,
+      vendor: vendorData,
+    );
+  }
   final String id;
   final int bookingId;
   final int userId;
@@ -38,48 +79,7 @@ class Booking {
   String? get selectedDate  => date;
   String? get selectedTime  => time;
   Map<String, dynamic>? get userLocation => location;
-  double get price => 0.0; // Subscription-based model
-
-  const Booking({
-    required this.id,
-    required this.bookingId,
-    required this.userId,
-    this.vendorId,
-    required this.selectedService,
-    required this.jobDescription,
-    required this.date,
-    required this.time,
-    required this.status,
-    this.location,
-    this.otpStart,
-    this.distance,
-    this.createdAt,
-    this.updatedAt,
-    this.vendor,
-  });
-
-  factory Booking.fromJson(Map<String, dynamic> json) {
-    // Handle both flat and nested 'vendor' object from backend
-    final vendorData = json['vendor'] as Map<String, dynamic>?;
-    
-    return Booking(
-      id: json['_id']?.toString() ?? '',
-      bookingId: (json['booking_id'] as num?)?.toInt() ?? 0,
-      userId: (json['userId'] as num?)?.toInt() ?? 0,
-      vendorId: json['vendorId'] != null ? (json['vendorId'] as num?)?.toInt() : null,
-      selectedService: json['selectedService'] as String? ?? 'Service',
-      jobDescription: json['jobDescription'] as String? ?? '',
-      date: json['date'] as String? ?? '',
-      time: json['time'] as String? ?? '',
-      status: json['status'] as String? ?? 'pending',
-      location: json['location'] as Map<String, dynamic>?,
-      otpStart: json['otpStart'] != null ? (json['otpStart'] as num).toInt() : null,
-      distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
-      vendor: vendorData,
-    );
-  }
+  double get price => 0.0;
 
   Map<String, dynamic> toJson() => {
     '_id': id,

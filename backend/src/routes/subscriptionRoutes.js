@@ -6,8 +6,8 @@ import {
   getUserSubscription,
 } from "../controllers/subscriptionController.js";
 import { protect } from "../middlewares/authMiddleware.js";
-import Joi from "joi";
-import { validate } from "../middlewares/validateMiddleware.js";
+import { validate, subscriptionSchemas } from "../middlewares/validateMiddleware.js";
+
 
 const router = express.Router();
 
@@ -22,25 +22,25 @@ const adminProtect = (req, res, next) => {
   return res.status(401).json({ success: false, message: "Unauthorized: Admin access required" });
 };
 
-const purchaseSchema = Joi.object({
-  planId: Joi.string().required(),
-});
 
 /* ------------------------------------------
    💳 SUBSCRIPTION ROUTES
 ------------------------------------------- */
 
+
 // Public: Get all active plans (supports ?planType=customer)
 router.get("/plans", getActivePlans);
 
 // Protected: Purchase a subscription (userId comes from JWT token)
-router.post("/purchase", protect, validate(purchaseSchema), purchaseSubscription);
+router.post("/purchase", protect, validate(subscriptionSchemas.purchase), purchaseSubscription);
+
 
 // Protected: Get user's active subscription
 router.get("/user/:userId", protect, getUserSubscription);
 router.get("/my", protect, getUserSubscription);
 
 // Admin: Create a plan
-router.post("/plans", adminProtect, createPlan);
+router.post("/plans", adminProtect, validate(subscriptionSchemas.createPlan), createPlan);
+
 
 export default router;

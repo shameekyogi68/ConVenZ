@@ -63,7 +63,9 @@ export const sendNotificationToUser = asyncHandler(async (req, res) => {
       user.fcmToken = null;
       await user.save();
       res.status(400);
-      throw new Error("FCM token is invalid or expired. User needs to re-register for notifications.");
+      const e = new Error("FCM token is invalid or expired. User needs to re-register for notifications.");
+      e.cause = notificationError;
+      throw e;
     }
     throw notificationError;
   }

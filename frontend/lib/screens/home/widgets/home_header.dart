@@ -9,7 +9,7 @@ class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
 
   String _greeting() {
-    final hour = DateTime.now().hour;
+    final int hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
@@ -17,8 +17,8 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = (SharedPrefs.getUserName() ?? '').split(' ').first;
-    final greetingText = firstName.isNotEmpty ? '${_greeting()}, $firstName 👋' : _greeting();
+    final String firstName = (SharedPrefs.getUserName() ?? '').split(' ').first;
+    final String greetingText = firstName.isNotEmpty ? '${_greeting()}, $firstName 👋' : _greeting();
 
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
@@ -41,12 +41,11 @@ class HomeHeader extends StatelessWidget {
                   ).animate().fade().slideY(begin: -0.2, end: 0, duration: 400.ms),
                   const SizedBox(height: 6),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryTeal.withValues(alpha: 0.1),
+                          color: AppColors.primaryTeal.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.location_on, color: AppColors.primaryTeal, size: 16),
@@ -90,7 +89,7 @@ class HomeHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
+                      color: Colors.black.withOpacity(0.06),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

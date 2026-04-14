@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/profile_service.dart';
+
 import '../services/auth_service.dart';
 import '../services/location_services.dart';
+import '../services/profile_service.dart';
 import '../utils/shared_prefs.dart';
 
 class UserProvider with ChangeNotifier {
-  String _currentAddress = "Loading address...";
+  String _currentAddress = 'Loading address...';
   String get currentAddress => _currentAddress;
 
   bool _isLoading = true;
@@ -17,29 +18,29 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ProfileService.getProfile();
+      final Map<String, dynamic> response = await ProfileService.getProfile();
       if (response['success'] == true) {
-        final userData = response['data'] ?? response['user'];
+        final userData = (response['data'] ?? response['user']) as Map<String, dynamic>?;
         if (userData != null) {
-          String dbAddress = userData['address'] ?? userData['location']?['address'] ?? "Location not set";
+          final dbAddress = (userData['address'] ?? (userData['location'] as Map<String, dynamic>?)?['address'] ?? 'Location not set') as String;
           if (dbAddress.isNotEmpty) {
             _currentAddress = dbAddress;
           } else {
-            _currentAddress = "Location not set";
+            _currentAddress = 'Location not set';
           }
         } else {
-          _currentAddress = "Location not set";
+          _currentAddress = 'Location not set';
         }
       } else {
-        _currentAddress = "Address not found";
+        _currentAddress = 'Address not found';
       }
     } catch (e) {
-      _currentAddress = "Error loading address";
+      _currentAddress = 'Error loading address';
     }
 
     // Force UI refresh after failure or success
-    if (_currentAddress == "Loading address...") {
-      _currentAddress = "Location not determined";
+    if (_currentAddress == 'Loading address...') {
+      _currentAddress = 'Location not determined';
     }
 
     _isLoading = false;
@@ -48,23 +49,24 @@ class UserProvider with ChangeNotifier {
 
   Future<void> syncLocation() async {
     try {
-      String? userId = SharedPrefs.getUserId();
+      final String? userId = SharedPrefs.getUserId();
       if (userId == null) {
-        _currentAddress = "User not logged in";
+        _currentAddress = 'User not logged in';
         notifyListeners();
         return;
       }
 
-      Position? pos = await LocationService.determinePosition();
+      final Position? pos = await LocationService.determinePosition();
       if (pos != null) {
-        final response = await AuthService.updateUserLocation(
+        final Map<String, dynamic> response = await AuthService.updateUserLocation(
           userId,
           pos.latitude,
           pos.longitude,
         );
 
         if (response['success'] == true && response['location'] != null) {
-          String newAddress = response['location']['address'] ?? "";
+          final location = response['location'] as Map<String, dynamic>;
+          final newAddress = (location['address'] ?? '') as String;
           if (newAddress.isNotEmpty) {
             _currentAddress = newAddress;
             notifyListeners();

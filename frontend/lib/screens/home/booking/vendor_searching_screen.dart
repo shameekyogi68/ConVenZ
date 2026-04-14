@@ -1,21 +1,22 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:go_router/go_router.dart';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../config/app_colors.dart';
-import '../../../widgets/secondary_button.dart';
-import '../../../services/booking_service.dart';
 import '../../../models/booking.dart';
+import '../../../services/booking_service.dart';
 
 class VendorSearchingScreen extends StatefulWidget {
-  final String bookingId;
-  final String serviceName;
 
   const VendorSearchingScreen({
     super.key,
     required this.bookingId,
     required this.serviceName,
   });
+  final String bookingId;
+  final String serviceName;
 
   @override
   State<VendorSearchingScreen> createState() => _VendorSearchingScreenState();
@@ -46,7 +47,9 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
     )..repeat();
 
     _countTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) setState(() => _secondsElapsed++);
+      if (mounted) {
+        setState(() => _secondsElapsed++);
+      }
     });
 
     // Hard timeout: if no vendor responds in 60 seconds go to not-found
@@ -63,7 +66,9 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
     // Poll backend every 5 seconds — navigate immediately on status change
     _pollSubscription = BookingService.pollBookingStatus(widget.bookingId).listen(
       (booking) {
-        if (!mounted || booking == null) return;
+        if (!mounted || booking == null) {
+          return;
+        }
         switch (booking.status) {
           case 'accepted':
             _timeoutTimer?.cancel();
@@ -77,7 +82,6 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
               'date': booking.date,
               'time': booking.time,
             });
-            break;
           case 'rejected':
           case 'cancelled':
             _timeoutTimer?.cancel();
@@ -86,7 +90,6 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
               'bookingId': widget.bookingId,
               'serviceName': widget.serviceName,
             });
-            break;
           default:
             break;
         }
@@ -105,7 +108,9 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
   }
 
   String get _elapsedLabel {
-    if (_secondsElapsed < 60) return '${_secondsElapsed}s';
+    if (_secondsElapsed < 60) {
+      return '${_secondsElapsed}s';
+    }
     return '${_secondsElapsed ~/ 60}m ${_secondsElapsed % 60}s';
   }
 
@@ -154,7 +159,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryTeal.withValues(alpha:0.3),
+                              color: AppColors.primaryTeal.withOpacity(0.3),
                               blurRadius: 20,
                               offset: const Offset(0, 6),
                             ),
@@ -199,7 +204,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withValues(alpha:0.08),
+                      color: AppColors.primaryTeal.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -211,7 +216,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.accentMint.withValues(alpha:0.1),
+                      color: AppColors.accentMint.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -235,7 +240,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  color: AppColors.primaryTeal.withValues(alpha:0.1),
+                  color: AppColors.primaryTeal.withOpacity(0.1),
                 ),
                 child: LinearProgressIndicator(
                   value: (_secondsElapsed / 60.0).clamp(0.0, 1.0),
@@ -262,7 +267,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(color: AppColors.primaryTeal.withValues(alpha:0.05), blurRadius: 12, offset: const Offset(0, 4)),
+                    BoxShadow(color: AppColors.primaryTeal.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: Row(
@@ -285,7 +290,9 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _isCancelling ? null : () {
-                    if (_isCancelling) return;
+                    if (_isCancelling) {
+                      return;
+                    }
                     setState(() => _isCancelling = true);
                     _timeoutTimer?.cancel();
                     _pollSubscription?.cancel();
@@ -296,7 +303,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   label: const Text('Cancel Search', style: TextStyle(fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primaryTeal,
-                    side: BorderSide(color: AppColors.primaryTeal.withValues(alpha:0.4)),
+                    side: BorderSide(color: AppColors.primaryTeal.withOpacity(0.4)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                   ),

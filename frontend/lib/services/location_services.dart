@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../utils/shared_prefs.dart';
 import 'auth_service.dart';
@@ -11,7 +12,9 @@ class LocationService {
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return null;
+    if (!serviceEnabled) {
+      return null;
+    }
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -22,7 +25,7 @@ class LocationService {
       }
     }
 
-    return await Geolocator.getCurrentPosition(
+    return Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
   }
@@ -31,7 +34,7 @@ class LocationService {
   static void startLocationTracking() {
     stopLocationTracking();
 
-    const LocationSettings locationSettings = LocationSettings(
+    const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 500, // Update every 500 meters
     );
@@ -40,27 +43,27 @@ class LocationService {
         .listen((Position currentPosition) async {
 
       // 1. Get User ID from storage
-      String? userId = SharedPrefs.getUserId();
+      final String? userId = SharedPrefs.getUserId();
       if (userId == null) {
-        print("❌ Tracking Skipped: User ID not found.");
+        debugPrint('❌ Tracking Skipped: User ID not found.');
         return;
       }
 
-      final lastLoc = SharedPrefs.getLastSyncedLocation();
+      final Map<String, double>? lastLoc = SharedPrefs.getLastSyncedLocation();
 
       if (lastLoc == null) {
-        print("🚀 First Location Sync...");
+        debugPrint('🚀 First Location Sync...');
         _syncLocationToServer(userId, currentPosition);
       } else {
-        double distanceInMeters = Geolocator.distanceBetween(
+        final double distanceInMeters = Geolocator.distanceBetween(
           lastLoc['lat']!, lastLoc['lng']!,
           currentPosition.latitude, currentPosition.longitude,
         );
 
-        print("📏 Moved: ${distanceInMeters.toStringAsFixed(1)}m");
+        debugPrint('📏 Moved: ${distanceInMeters.toStringAsFixed(1)}m');
 
         if (distanceInMeters > 2000) { // 2km threshold
-          print("🚀 Moved > 2km. Updating DB...");
+          debugPrint('🚀 Moved > 2km. Updating DB...');
           _syncLocationToServer(userId, currentPosition);
         }
       }
@@ -74,18 +77,18 @@ class LocationService {
 
   static Future<void> _syncLocationToServer(String userId, Position position) async {
     try {
-      final response = await AuthService.updateUserLocation(
+      final Map<String, dynamic> response = await AuthService.updateUserLocation(
           userId, position.latitude, position.longitude
       );
 
       if (response['success'] == true) {
         await SharedPrefs.saveLastSyncedLocation(position.latitude, position.longitude);
-        print("✅ Location Updated in DB for User $userId");
+        debugPrint('✅ Location Updated in DB for User $userId');
       } else {
-        print("❌ API Error: ${response['message']}");
+        debugPrint("❌ API Error: ${response['message']}");
       }
     } catch (e) {
-      print("❌ Sync Error: $e");
+      debugPrint('❌ Sync Error: $e');
     }
   }
 }

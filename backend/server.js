@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -8,18 +8,24 @@ import compression from "compression";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import mongoose from "mongoose";
+import * as Sentry from "@sentry/node";
 
-// ✅ Load env FIRST before anything else
-dotenv.config();
-
+// Env loaded at absolute top
 import connectDB from "./src/config/db.js";
 import userRoutes from "./src/routes/userRoutes.js";
-import bookingRoutes from "./src/routes/bookingRoutes.js";
 import subscriptionRoutes from "./src/routes/subscriptionRoutes.js";
 import notificationRoutes from "./src/routes/notificationRoutes.js";
 import externalRoutes from "./src/routes/externalRoutes.js";
 import { notFound, errorHandler } from "./src/middlewares/errorMiddleware.js";
 import startHourlyNotifications from "./src/utils/scheduler.js";
+import logger from "./src/utils/logger.js";
+import { verifySignature } from "./src/middlewares/sigMiddleware.js";
+
+// Initialize Sentry for Error Tracking
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+  logger.info("🛡️  Sentry initialized for error monitoring");
+}
 
 // ✅ Connect to MongoDB (with retry logic in db.js)
 connectDB();
@@ -38,7 +44,21 @@ app.set("trust proxy", 1);
 // ─────────────────────────────────────────────
 // 🛡️ Security Middleware
 // ─────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://*.sentry.io"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+}));
+
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ─────────────────────────────────────────────
@@ -76,7 +96,7 @@ app.use(cors({
     callback(new Error(`CORS policy: origin ${origin} not allowed`));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-admin-secret", "x-server-secret", "x-cron-secret"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-admin-secret", "x-server-secret", "x-cron-secret", "x-signature", "x-timestamp"],
   credentials: true,
 }));
 
@@ -90,19 +110,18 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(mongoSanitize());
 
 // Prevent HTTP Parameter Pollution
-app.use(hpp());
+app.use(/** @type {any} */ (hpp()));
 
 // Response Compression (Gzip) for faster mobile loading
-app.use(compression());
+app.use(/** @type {any} */ (compression()));
 
 // ─────────────────────────────────────────────
 // 🛣️ API Routes
 // ─────────────────────────────────────────────
-app.use("/api/user", userRoutes);
-app.use("/api/booking", bookingRoutes);
-app.use("/api/subscription", subscriptionRoutes);
-app.use("/api/notification", notificationRoutes);
-app.use("/api/external", externalRoutes);
+app.use("/api/v1/user", verifySignature, userRoutes);
+app.use("/api/v1/subscription", verifySignature, subscriptionRoutes);
+app.use("/api/v1/notification", verifySignature, notificationRoutes);
+app.use("/api/v1/external", verifySignature, externalRoutes);
 
 // ─────────────────────────────────────────────
 // 🩺 Health Check (For Render / Uptime Monitors)
@@ -124,44 +143,44 @@ app.get("/health", (req, res) => {
 // ─────────────────────────────────────────────
 // ❌ Global Error Handling (MUST be last)
 // ─────────────────────────────────────────────
-app.use(notFound);
+app.use("*", notFound);
 app.use(errorHandler);
 
 // ─────────────────────────────────────────────
 // 🚀 Start Server
 // ─────────────────────────────────────────────
-const PORT = process.env.PORT || 5005;
+const PORT = Number(process.env.PORT) || 5005;
 const HOST = "0.0.0.0";
 
 const server = app.listen(PORT, HOST, () => {
-  console.log("\n" + "=".repeat(60));
-  console.log("🚀 CONVENZ CUSTOMER BACKEND SERVER — PRODUCTION");
-  console.log("=".repeat(60));
-  console.log(`✅ SERVER_STARTED   | ${new Date().toISOString()}`);
-  console.log(`📍 Port: ${PORT}    | Host: ${HOST}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "production"}`);
-  console.log("=".repeat(60) + "\n");
+  logger.info("=".repeat(60));
+  logger.info("🚀 CONVENZ CUSTOMER BACKEND SERVER — PRODUCTION");
+  logger.info("=".repeat(60));
+  logger.info(`✅ SERVER_STARTED   | ${new Date().toISOString()}`);
+  logger.info(`📍 Port: ${PORT}    | Host: ${HOST}`);
+  logger.info(`🌍 Environment: ${process.env.NODE_ENV || "production"}`);
+  logger.info("=".repeat(60));
 });
 
 // ─────────────────────────────────────────────
 // 🛑 Graceful Shutdown
 // ─────────────────────────────────────────────
 const gracefulShutdown = (signal) => {
-  console.log(`\n🛑 ${signal} received. Shutting down gracefully...`);
+  logger.info(`🛑 ${signal} received. Shutting down gracefully...`);
   server.close(async () => {
-    console.log("📡 HTTP server closed.");
+    logger.info("📡 HTTP server closed.");
     try {
       await mongoose.connection.close(false);
-      console.log("🗄️  MongoDB connection closed.");
+      logger.info("🗄️  MongoDB connection closed.");
       process.exit(0);
     } catch (err) {
-      console.error("❌ Error closing MongoDB:", err);
+      logger.error(err, "❌ Error closing MongoDB:");
       process.exit(1);
     }
   });
   // Force shutdown after 10 seconds
   setTimeout(() => {
-    console.error("⚠️  Forced shutdown after timeout.");
+    logger.error("⚠️  Forced shutdown after timeout.");
     process.exit(1);
   }, 10000);
 };

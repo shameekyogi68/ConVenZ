@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 
 class SecondaryButton extends StatelessWidget {
-  final String text;
-  final VoidCallback onPressed;
-  final IconData? icon;
 
   const SecondaryButton({
     super.key,
@@ -12,6 +9,9 @@ class SecondaryButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
   });
+  final String text;
+  final VoidCallback onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
