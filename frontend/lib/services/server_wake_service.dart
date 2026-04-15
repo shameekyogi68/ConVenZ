@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+
 
 import 'package:http/http.dart' as http;
 
@@ -37,38 +37,42 @@ class ServerWakeService {
     onStatusUpdate?.call('Connecting to server...');
     AppLogger.i('🌐 Pinging server at $_healthUrl');
 
+    var attempts = 0;
     while (stopwatch.elapsed < _coldStartTimeout) {
+      attempts++;
       try {
+        // Fast timeout for the first few pings to detect an already-awake server
         final http.Response response = await http
             .get(Uri.parse(_healthUrl))
-            .timeout(const Duration(seconds: 10));
+            .timeout(const Duration(seconds: 3));
 
         if (response.statusCode == 200) {
           _isServerAwake = true;
           stopwatch.stop();
-          AppLogger.i('✅ Server is awake after ${stopwatch.elapsed.inSeconds}s');
+          AppLogger.i('✅ Server is awake after ${stopwatch.elapsed.inSeconds}s ($attempts attempts)');
           onStatusUpdate?.call('Connected!');
           _startKeepAliveTimer();
           return true;
         }
-      } on SocketException {
-        AppLogger.w('Server not reachable yet. Retrying...');
-        onStatusUpdate?.call('Starting up server... (${stopwatch.elapsed.inSeconds}s)');
-      } on TimeoutException {
-        AppLogger.w('Server ping timed out. Retrying...');
-        onStatusUpdate?.call('Server is warming up... (${stopwatch.elapsed.inSeconds}s)');
       } catch (e) {
-        AppLogger.e('Unexpected ping error', e);
-        onStatusUpdate?.call('Connecting...');
+        // Log failures but keep going fast for the first 5 attempts
+        if (attempts > 5) {
+          AppLogger.w('Server not responsive yet: $e');
+        }
       }
 
-      await Future<void>.delayed(_retryDelay);
+      // UX: Faster retries (1s) for the first 5 seconds, then move to 3s
+      final Duration delay = attempts < 5 ? const Duration(seconds: 1) : _retryDelay;
+      
+      if (attempts > 1) {
+        onStatusUpdate?.call('Starting up server... (${stopwatch.elapsed.inSeconds}s)');
+      }
+      
+      await Future<void>.delayed(delay as Duration);
     }
 
-    // Timed out but allow app to continue (server might just be slow)
     _isServerAwake = false;
-    AppLogger.w('⚠️ Server wake timeout after ${_coldStartTimeout.inSeconds}s. Proceeding anyway.');
-    onStatusUpdate?.call('Taking longer than usual...');
+    stopwatch.stop();
     return false;
   }
 

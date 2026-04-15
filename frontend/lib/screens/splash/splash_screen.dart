@@ -45,7 +45,9 @@ class _SplashScreenState extends State<SplashScreen>
     // Ping server and wait for it to wake up
     await ServerWakeService.wakeUp(
       onStatusUpdate: (status) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _statusMessage = status;
 
@@ -57,7 +59,9 @@ class _SplashScreenState extends State<SplashScreen>
       },
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     _animateProgress(0.85, const Duration(milliseconds: 500));
 
     // Navigate to the right screen
@@ -66,14 +70,16 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _animateProgress(double target, Duration duration) {
     final start = _progress;
-    final steps = 20;
-    final stepDuration = Duration(
-      milliseconds: duration.inMilliseconds ~/ steps,
+    const steps = 20;
+    const stepDuration = Duration(
+      milliseconds: 400 ~/ steps,
     );
     int step = 0;
     Future.doWhile(() async {
       await Future<void>.delayed(stepDuration);
-      if (!mounted) return false;
+      if (!mounted) {
+        return false;
+      }
       step++;
       setState(() {
         _progress = start + (target - start) * (step / steps);
@@ -83,10 +89,11 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkLoginStatus() async {
-    _animateProgress(1.0, const Duration(milliseconds: 300));
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-
-    if (!mounted) return;
+    _animateProgress(1.0, const Duration(milliseconds: 200));
+    
+    if (!mounted) {
+      return;
+    }
 
     final String? userId = SharedPrefs.getUserId();
     final bool isNew = SharedPrefs.getIsNewUser();
@@ -111,9 +118,9 @@ class _SplashScreenState extends State<SplashScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF6AACBF), Color(0xFF1F465A)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                colors: [Color(0xFF0F303E), Color(0xFF1D5B6F), Color(0xFF299991)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
           ),
@@ -122,9 +129,9 @@ class _SplashScreenState extends State<SplashScreen>
           ClipPath(
             clipper: TopRoundedClipper(),
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.white, Color(0xFF3A7A94)],
+                  colors: [Colors.white, Colors.white.withOpacity(0.95), Colors.white.withOpacity(0.9)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -134,69 +141,93 @@ class _SplashScreenState extends State<SplashScreen>
 
           // ── Welcome Image ──
           Positioned(
-            top: 85,
+            top: 75,
             left: 0,
             right: 0,
             child: Image.asset(
               'assets/images/welcome1.png',
-              height: 275,
-            ),
+              height: 290,
+            ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.9, 0.9)),
           ),
 
           // ── Bottom Content ──
           Positioned(
-            bottom: 80,
+            bottom: 70,
             left: 32,
             right: 32,
             child: Column(
               children: [
-                // Logo
-                Image.asset(
-                  'assets/images/convenzlogo.png',
-                  height: 80,
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
+                // Logo with Glow
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(color: Colors.white.withOpacity(0.15), blurRadius: 40, spreadRadius: 10),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/images/convenzlogo.png',
+                    height: 85,
+                  ),
+                ).animate().fadeIn(duration: 700.ms).slideY(begin: 0.15),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 35),
 
-                // Cold start banner (only shown when server is waking up)
+                // Cold start banner (Glassmorphism)
                 if (_isColdStart)
                   _ColdStartBanner(message: _statusMessage)
                       .animate()
-                      .fadeIn(duration: 400.ms)
-                      .slideY(begin: 0.3),
+                      .fadeIn(duration: 500.ms)
+                      .slideY(begin: 0.2),
 
                 if (!_isColdStart) ...[
-                  // Normal spinner
+                  // Minimal smooth spinner
                   const SizedBox(
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
                     child: CircularProgressIndicator(
                       color: Colors.white,
-                      strokeWidth: 2.5,
+                      strokeWidth: 2,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Text(
                     _statusMessage,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 32),
 
-                // ── Progress Bar ──
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: _progress,
-                    backgroundColor: Colors.white24,
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.white),
-                    minHeight: 4,
+                // ── Sleek Progress Bar ──
+                Container(
+                  height: 6,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Stack(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: MediaQuery.of(context).size.width * 0.8 * _progress,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Colors.white70, Colors.white]),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(color: Colors.white.withOpacity(0.4), blurRadius: 8),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

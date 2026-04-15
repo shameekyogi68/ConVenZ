@@ -48,6 +48,13 @@ class ApiService {
           final String secret = AppConstants.apiSigningSecret;
           
           // Data to sign: METHOD|PATH|TIMESTAMP|BODY
+          // Use only the relative path to avoid protocol/host mismatches in cloud environments
+          String path = options.path;
+          if (path.startsWith('http')) {
+            final Uri uri = Uri.parse(path);
+            path = uri.path;
+          }
+          
           var bodyString = '';
           if (options.data != null) {
             if (options.data is Map || options.data is List) {
@@ -57,7 +64,7 @@ class ApiService {
             }
           }
           
-          final dataToSign = '${options.method.toUpperCase()}|${options.path}|$timestamp|$bodyString';
+          final dataToSign = '${options.method.toUpperCase()}|$path|$timestamp|$bodyString';
           final hmac = Hmac(sha256, utf8.encode(secret));
           final signature = hmac.convert(utf8.encode(dataToSign)).toString();
           
@@ -128,7 +135,7 @@ class ApiService {
       {int retries = 3}) async {
         
     // 1️⃣ Check Cache
-    final _CacheEntry? cached = _cache[absoluteUrl];
+    final cached = _cache[absoluteUrl];
     if (cached != null && DateTime.now().isBefore(cached.expiry)) {
       AppLogger.d('⚡ CACHE HIT: $absoluteUrl');
       return cached.data;
@@ -140,7 +147,7 @@ class ApiService {
         final Response<Map<String, dynamic>> response =
             await _client.get<Map<String, dynamic>>(absoluteUrl);
             
-        final Map<String, dynamic> responseData = _handleDioResponse(response);
+        final responseData = _handleDioResponse(response);
         
         // Save to Cache if successful
         if (responseData['success'] == true) {
@@ -208,7 +215,9 @@ class ApiService {
       if (response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
         // Bubble up clean backend validation errors
-        if (data.containsKey('message')) return data;
+        if (data.containsKey('message')) {
+          return data;
+        }
       }
       
       // Fallback for 500s or HTML dumps from Render when server crashes
