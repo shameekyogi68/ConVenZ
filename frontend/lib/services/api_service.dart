@@ -190,27 +190,40 @@ class ApiService {
 
   static Map<String, dynamic> _handleDioException(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout || 
-        e.type == DioExceptionType.receiveTimeout) {
-      return {'success': false, 'message': 'Connection timed out. Please try again.'};
+        e.type == DioExceptionType.receiveTimeout || 
+        e.type == DioExceptionType.sendTimeout) {
+      return {'success': false, 'message': 'The server took too long to respond. Please check your internet speed and try again.'};
     }
     
     if (e.type == DioExceptionType.connectionError) {
       if (e.message?.contains('CERTIFICATE_VERIFY_FAILED') ?? false) {
-        return {'success': false, 'message': 'Secure connection failed. Possible security risk detected.'};
+        return {'success': false, 'message': 'Secure connection failed. Please ensure your device date and time are accurate.'};
       }
-      return {'success': false, 'message': 'Network error. Please check your connection.'};
+      return {'success': false, 'message': 'No internet connection detected. Please check your Wi-Fi or mobile data.'};
     }
 
+    // Capture standard backend JSON errors
     final Response<dynamic>? response = e.response;
-    if (response != null && response.data is Map<String, dynamic>) {
-      return response.data as Map<String, dynamic>;
+    if (response != null) {
+      if (response.data is Map<String, dynamic>) {
+        final data = response.data as Map<String, dynamic>;
+        // Bubble up clean backend validation errors
+        if (data.containsKey('message')) return data;
+      }
+      
+      // Fallback for 500s or HTML dumps from Render when server crashes
+      if (response.statusCode != null && response.statusCode! >= 500) {
+        return {'success': false, 'message': 'Our servers are currently overloaded. Please try again in a few moments.'};
+      }
     }
 
-    return {'success': false, 'message': 'An error occurred during communication.'};
+    return {'success': false, 'message': 'We encountered a minor communication hiccup. Please try again.'};
   }
 
   static Map<String, dynamic> _handleException(Object e) {
-    return {'success': false, 'message': 'Unexpected error: $e'};
+    // We log the real error for developers, but show a polished message to the standard user
+    AppLogger.e('Unhandled Internal Exception', e);
+    return {'success': false, 'message': 'Oops! Something went wrong on our end. Please restart the app if this persists.'};
   }
 }
 
