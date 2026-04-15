@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
 // JWT Secret Key - must be set in environment variables
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "";
 if (!JWT_SECRET) {
   console.error("❌ FATAL: JWT_SECRET environment variable is not set. Server cannot start securely.");
   process.exit(1);
@@ -64,6 +64,7 @@ export const protect = async (req, res, next) => {
  */
 export const generateToken = (userId, tokenVersion = 0) => {
   return jwt.sign({ userId, tokenVersion }, JWT_SECRET, {
-    expiresIn: /** @type {any} */ (process.env.SESSION_EXPIRY || "30d"),
+    // @ts-ignore
+    expiresIn: process.env.SESSION_EXPIRY || "30d",
   });
 };
