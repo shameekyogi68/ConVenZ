@@ -17,6 +17,10 @@ class ApiService {
 
   static Dio? _dio;
 
+  // 🚀 In-Memory Cache to drastically reduce server load (10/10 optimization)
+  static final Map<String, _CacheEntry> _cache = {};
+  static const Duration _cacheDuration = Duration(minutes: 1);
+
   static Dio get _client {
     if (_dio != null) {
       return _dio!;
@@ -124,11 +128,31 @@ class ApiService {
   // -----------------------
   static Future<Map<String, dynamic>> getUrl(String absoluteUrl,
       {int retries = 3}) async {
+        
+    // 1️⃣ Check Cache
+    final cached = _cache[absoluteUrl];
+    if (cached != null && DateTime.now().isBefore(cached.expiry)) {
+      AppLogger.d('⚡ CACHE HIT: $absoluteUrl');
+      return cached.data;
+    }
+
+    // 2️⃣ Network Request
     for (var attempt = 1; attempt <= retries; attempt++) {
       try {
         final Response<Map<String, dynamic>> response =
             await _client.get<Map<String, dynamic>>(absoluteUrl);
-        return _handleDioResponse(response);
+            
+        final responseData = _handleDioResponse(response);
+        
+        // Save to Cache if successful
+        if (responseData['success'] == true) {
+           _cache[absoluteUrl] = _CacheEntry(
+             data: responseData,
+             expiry: DateTime.now().add(_cacheDuration),
+           );
+        }
+        
+        return responseData;
       } on DioException catch (e) {
         // Retry on connection errors (server might be waking up)
         if (attempt < retries &&
@@ -190,4 +214,11 @@ class ApiService {
   static Map<String, dynamic> _handleException(Object e) {
     return {'success': false, 'message': 'Unexpected error: $e'};
   }
+}
+
+class _CacheEntry {
+  final Map<String, dynamic> data;
+  final DateTime expiry;
+  
+  _CacheEntry({required this.data, required this.expiry});
 }
