@@ -318,21 +318,41 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                           setState(() => _isMockAssigning = true);
                           final Map<String, dynamic> res =
                               await BookingService.mockAssignVendor(widget.bookingId);
-                          if (!mounted) {
+                          if (!context.mounted) {
                             return;
                           }
                           setState(() => _isMockAssigning = false);
                           if (res['success'] == true) {
-                            // Poller will pick up accepted status and navigate automatically.
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: const Text('Mock vendor assigned'),
-                                backgroundColor: AppColors.primaryTeal,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                margin: const EdgeInsets.all(16),
-                              ),
-                            );
+                            // Use booking data from mock assignment response
+                            final bookingData = res['data'] as Map<String, dynamic>;
+                            final updatedBooking = Booking.fromJson(bookingData);
+                            
+                            if (context.mounted && updatedBooking.status == 'accepted') {
+                              // Cancel timers and navigate immediately
+                              _timeoutTimer?.cancel();
+                              _pollSubscription?.cancel();
+                              context.go('/vendorDetails', extra: updatedBooking);
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: const Text('Mock vendor assigned successfully!'),
+                                  backgroundColor: AppColors.primaryTeal,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  margin: const EdgeInsets.all(16),
+                                ),
+                              );
+                            } else {
+                              // Fallback to poller if status is not accepted
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: const Text('Mock vendor assigned. Waiting for status update...'),
+                                  backgroundColor: AppColors.primaryTeal,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  margin: const EdgeInsets.all(16),
+                                ),
+                              );
+                            }
                           } else {
                             messenger.showSnackBar(
                               SnackBar(

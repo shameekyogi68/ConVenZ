@@ -290,10 +290,13 @@ export const mockAssignVendor = asyncHandler(async (req, res) => {
     logger.warn(`NO_FCM_TOKEN_FOR_MOCK_ASSIGNMENT | User: ${userId} | Booking: ${bookingId}`);
   }
 
+  // Fetch booking with OTP included for frontend
+  const bookingWithOtp = await Booking.findOne({ booking_id: bookingId }).select("+otpStart");
+
   return res.status(200).json({
     success: true,
     message: "Mock vendor assigned",
-    data: booking,
+    data: bookingWithOtp,
   });
 });
 
