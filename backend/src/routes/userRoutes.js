@@ -20,7 +20,8 @@ import {
   cancelBooking,
   updateBookingStatus,
   verifyJobOtp,
-  submitReview
+  submitReview,
+  mockAssignVendor,
 } from "../controllers/customerBookingController.js";
 import {
   checkUserBlocked,
@@ -131,6 +132,10 @@ router.post("/user/booking/:bookingId/review", protect, validate(bookingSchemas.
 // Get single booking details - MUST come last (catches any bookingId)
 router.get("/booking/:bookingId", protect, getBookingDetails);
 router.get("/user/booking/:bookingId", protect, getBookingDetails); // Alias
+
+// Mock assign vendor (QA/testing only)
+router.post("/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor);
+router.post("/user/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor); // Alias
 
 /* ------------------------------------------
    🔒 ADMIN ROUTES - User Blocking (PROTECTED)

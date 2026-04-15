@@ -80,7 +80,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
 
     final String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    final String formattedTime =
+    final formattedTime =
         '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
 
     setState(() => _isLoading = true);
@@ -138,7 +138,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
         if (success) {
           final Map<String, dynamic>? data = result['data'] is Map<String, dynamic> ? result['data'] as Map<String, dynamic> : null;
-          final String bookingId = ((data?['_id'] ?? result['bookingId']) as Object?)?.toString() ?? '';
+          final String bookingId = ((data?['booking_id'] ?? data?['_id'] ?? result['bookingId']) as Object?)?.toString() ?? '';
           context.go('/vendorSearching', extra: {
             'bookingId': bookingId,
             'serviceName': service,

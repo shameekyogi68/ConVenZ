@@ -31,6 +31,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
   Timer? _countTimer;
   StreamSubscription<Booking?>? _pollSubscription;
   bool _isCancelling = false;
+  bool _isMockAssigning = false;
 
   @override
   void initState() {
@@ -309,6 +310,60 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   ),
                 ),
               ).animate().fade(delay: 350.ms),
+
+              const SizedBox(height: 12),
+
+              // QA escape hatch: assign a mock vendor to continue testing flows
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _isMockAssigning
+                      ? null
+                      : () async {
+                          final ScaffoldMessengerState messenger =
+                              ScaffoldMessenger.of(context);
+                          setState(() => _isMockAssigning = true);
+                          final Map<String, dynamic> res =
+                              await BookingService.mockAssignVendor(widget.bookingId);
+                          if (!mounted) {
+                            return;
+                          }
+                          setState(() => _isMockAssigning = false);
+                          if (res['success'] == true) {
+                            // Poller will pick up accepted status and navigate automatically.
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: const Text('Mock vendor assigned'),
+                                backgroundColor: AppColors.primaryTeal,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          } else {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text((res['message'] as Object?)?.toString() ?? 'Failed to assign mock vendor'),
+                                backgroundColor: AppColors.dangerRed,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          }
+                        },
+                  child: _isMockAssigning
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Assign Mock Vendor (Testing)',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ).animate().fade(delay: 380.ms),
             ],
           ),
         ),

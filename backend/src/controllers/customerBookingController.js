@@ -27,9 +27,18 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
   });
   
   if (activePending >= 1) {
-    return res.status(400).json({
-      success: false,
-      message: "You already have an active booking in progress. Please complete or cancel it first.",
+    // UX-first: instead of blocking the flow, return the most recent active booking
+    // so the app can continue to vendor-search/tracking screens seamlessly.
+    const existing = await Booking.findOne({
+      userId,
+      status: { $in: ["pending", "accepted", "enroute"] },
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "You already have an active booking in progress.",
+      data: existing,
+      reusedExisting: true,
     });
   }
 
@@ -217,6 +226,48 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json({ success: true, message: "Status updated", data: booking });
+});
+
+/* ------------------------------------------------------------
+   🧪 MOCK: ASSIGN A TEST VENDOR (Customer-only, for QA)
+------------------------------------------------------------ */
+export const mockAssignVendor = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const bookingId = req.params.bookingId;
+
+  const booking = await Booking.findOne({ booking_id: bookingId });
+  if (!booking) {
+    return res.status(404).json({ success: false, message: "Booking not found" });
+  }
+
+  if (booking.userId !== userId) {
+    return res.status(403).json({ success: false, message: "Access denied" });
+  }
+
+  if (["completed", "cancelled"].includes(booking.status)) {
+    return res.status(400).json({ success: false, message: `Cannot assign vendor for status: ${booking.status}` });
+  }
+
+  // Assign a deterministic mock vendor and mark accepted.
+  booking.vendorId = 9999;
+  booking.status = "accepted";
+  booking.distance = 0;
+  booking.externalVendor = {
+    vendorId: "MOCK-9999",
+    vendorName: "Mock Vendor",
+    vendorPhone: "9999999999",
+    vendorAddress: booking.location?.address ?? "",
+    serviceType: booking.selectedService,
+    assignedAt: new Date(),
+    lastUpdated: new Date(),
+  };
+  await booking.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Mock vendor assigned",
+    data: booking,
+  });
 });
 
 /* ------------------------------------------------------------

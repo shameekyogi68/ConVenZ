@@ -109,4 +109,15 @@ class BookingService {
       return {'success': false, 'message': 'Failed to cancel booking: $e'};
     }
   }
+
+  // ─────────────────────────────────────────────
+  /// MOCK: Assign a mock vendor for QA
+  // ─────────────────────────────────────────────
+  static Future<Map<String, dynamic>> mockAssignVendor(String bookingId) async {
+    try {
+      return await ApiService.post('/user/booking/$bookingId/mock-assign-vendor', {});
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to assign mock vendor: $e'};
+    }
+  }
 }
