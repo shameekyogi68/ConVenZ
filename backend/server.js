@@ -34,6 +34,30 @@ startHourlyNotifications();
 const app = express();
 
 // ─────────────────────────────────────────────
+// 🧩 Express v5 compatibility shim
+// ─────────────────────────────────────────────
+// Some third-party middleware (or older code) may still try to assign to `req.query`.
+// In Express v5, `req.query` is implemented as a getter-only property which makes such
+// assignments throw and can break health checks (e.g. Render's `HEAD /` probe).
+app.use((req, _res, next) => {
+  try {
+    const desc = Object.getOwnPropertyDescriptor(req, "query");
+    if (!desc || typeof desc.set !== "function") {
+      const q = req.query; // capture getter value once
+      Object.defineProperty(req, "query", {
+        value: q,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    }
+  } catch {
+    // ignore and continue
+  }
+  next();
+});
+
+// ─────────────────────────────────────────────
 // ☁️ Render Load Balancer / Proxy Support
 // ─────────────────────────────────────────────
 // Trust the first proxy to ensure `express-rate-limit` uses real client IPs
@@ -121,6 +145,10 @@ app.use("/api/v1/external", verifySignature, externalRoutes);
 // ─────────────────────────────────────────────
 // 🩺 Health Check (For Render / Uptime Monitors)
 // ─────────────────────────────────────────────
+app.head("/", (req, res) => {
+  res.status(200).end();
+});
+
 app.get("/", (req, res) => {
   res.status(200).json({ status: "alive", message: "ConVenZ API is running" });
 });
