@@ -69,15 +69,11 @@ export const verifySignature = (req, res, next) => {
       ? JSON.stringify(req.body) 
       : "";
     
-    // Construct full URL to match what Dio has in options.path
-    const protocol = req.protocol;
-    const host = req.get("host");
-    const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+    // Cloud-safe signature: Use the relative path instead of the full absolute URL
+    // to avoid protocol (http vs https) or host mismatches on proxy layers.
+    const path = req.originalUrl;
     
-    // Actually, it's safer to use the relative path if possible, but let's see what Dio does.
-    // if I pass '$baseUrl$endpoint' to _client.post, then options.path is indeed that string.
-    
-    const dataToSign = `${method}|${fullUrl}|${timestamp}|${bodyString}`;
+    const dataToSign = `${method}|${path}|${timestamp}|${bodyString}`;
     
     const expectedSignature = crypto
       .createHmac("sha256", API_SIGNING_SECRET)
@@ -85,8 +81,7 @@ export const verifySignature = (req, res, next) => {
       .digest("hex");
 
     if (signature !== expectedSignature) {
-      // Log for debugging (don't log secrets!)
-      logger.error(`🚨 SIGNATURE_ERROR | Mismatch! Data: ${method}|${fullUrl}|${timestamp}|[body hidden]`);
+      logger.error(`🚨 SIGNATURE_ERROR | Mismatch! Expected sig for: ${dataToSign}`);
       return res.status(403).json({
         success: false,
         message: "Security violation: Invalid request signature",

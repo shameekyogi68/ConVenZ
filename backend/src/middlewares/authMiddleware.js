@@ -63,8 +63,10 @@ export const protect = async (req, res, next) => {
  * @param {number} tokenVersion
  */
 export const generateToken = (userId, tokenVersion = 0) => {
+  /** @type {any} */
+  const expiresIn = process.env.SESSION_EXPIRY || "30d";
+  
   return jwt.sign({ userId, tokenVersion }, JWT_SECRET, {
-    // @ts-ignore
-    expiresIn: process.env.SESSION_EXPIRY || "30d",
+    expiresIn,
   });
 };

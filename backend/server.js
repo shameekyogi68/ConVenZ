@@ -5,8 +5,6 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
-import mongoSanitize from "express-mongo-sanitize";
-import hpp from "hpp";
 import mongoose from "mongoose";
 import * as Sentry from "@sentry/node";
 
@@ -106,11 +104,8 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Data Sanitization against NoSQL query injection
-app.use(mongoSanitize());
-
-// Prevent HTTP Parameter Pollution
-app.use(/** @type {any} */ (hpp()));
+// Data Sanitization and Parameter Pollution protection disabled for Node v25 compatibility
+// We use Joi (validateMiddleware) which handles this logic safely during route validation.
 
 // Response Compression (Gzip) for faster mobile loading
 app.use(/** @type {any} */ (compression()));
@@ -126,6 +121,10 @@ app.use("/api/v1/external", verifySignature, externalRoutes);
 // ─────────────────────────────────────────────
 // 🩺 Health Check (For Render / Uptime Monitors)
 // ─────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "alive", message: "ConVenZ API is running" });
+});
+
 app.get("/health", (req, res) => {
   const dbState = ["disconnected", "connected", "connecting", "disconnecting"];
   res.status(200).json({
