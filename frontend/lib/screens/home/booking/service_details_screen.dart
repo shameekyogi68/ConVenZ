@@ -138,7 +138,9 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
 
         if (success) {
           final Map<String, dynamic>? data = result['data'] is Map<String, dynamic> ? result['data'] as Map<String, dynamic> : null;
-          final String bookingId = ((data?['booking_id'] ?? data?['_id'] ?? result['bookingId']) as Object?)?.toString() ?? '';
+          // booking_id is the sequential integer key the backend uses for all queries.
+          // Never use _id (MongoDB ObjectId) — the poller and mock-assign endpoints query by booking_id.
+          final String bookingId = (data?['booking_id'] as Object?)?.toString() ?? '';
           context.go('/vendorSearching', extra: {
             'bookingId': bookingId,
             'serviceName': service,
