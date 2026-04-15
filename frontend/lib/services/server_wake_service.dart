@@ -25,21 +25,21 @@ class ServerWakeService {
   /// Returns the health endpoint URL (no auth needed)
   static String get _healthUrl {
     // e.g. https://convenz.onrender.com/health
-    final base = AppConstants.apiBaseUrl.replaceAll('/api/v1', '');
+    final String base = AppConstants.apiBaseUrl.replaceAll('/api/v1', '');
     return '$base/health';
   }
 
   /// Called on app start. Returns true when the server is ready.
   /// Shows a cold-start wait of up to 75 seconds.
   static Future<bool> wakeUp({void Function(String status)? onStatusUpdate}) async {
-    final stopwatch = Stopwatch()..start();
+    final Stopwatch stopwatch = Stopwatch()..start();
 
     onStatusUpdate?.call('Connecting to server...');
     AppLogger.i('🌐 Pinging server at $_healthUrl');
 
     while (stopwatch.elapsed < _coldStartTimeout) {
       try {
-        final response = await http
+        final http.Response response = await http
             .get(Uri.parse(_healthUrl))
             .timeout(const Duration(seconds: 10));
 
@@ -77,7 +77,7 @@ class ServerWakeService {
     _keepAliveTimer?.cancel();
     _keepAliveTimer = Timer.periodic(_pingInterval, (_) async {
       try {
-        final response = await http
+        final http.Response response = await http
             .get(Uri.parse(_healthUrl))
             .timeout(const Duration(seconds: 10));
         AppLogger.d('🏓 Keep-alive ping: ${response.statusCode}');
