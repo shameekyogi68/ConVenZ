@@ -55,7 +55,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
 
     final String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    final String formattedTime = _selectedTime!.format(context);
+    final String formattedTime = '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
 
     setState(() => _isLoading = true);
 

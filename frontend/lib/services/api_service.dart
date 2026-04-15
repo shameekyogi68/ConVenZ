@@ -13,13 +13,7 @@ import '../utils/shared_prefs.dart';
 class ApiService {
   static String get baseUrl => AppConstants.userBaseUrl;
 
-  // 🔐 Certificate Fingerprints for onrender.com
-  // These are the SHA-256 fingerprints of the leaf certificates.
-  // Note: These should be updated if the server certificates are rotated.
-  static const List<String> _pinnedFingerprints = [
-    '4E:60:2F:FB:2A:B3:D6:8F:7E:16:D7:C6:BB:62:3D:62:0C:9E:14:38:B7:13:A6:A9:5B:4B:04:D3:A8:70:4A:29', // PRIMARY (EC)
-    '68:A9:E4:83:29:4D:DE:C2:84:4A:3A:CC:30:25:09:DF:E2:EC:CB:9E:B0:E2:9E:60:B6:8B:DC:6E:4E:52:A0:D2', // SECONDARY (RSA)
-  ];
+
 
   static Dio? _dio;
 
@@ -92,41 +86,7 @@ class ApiService {
       },
     ));
 
-    // ── CERTIFICATE PINNING ──
-    _dio!.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient(context: SecurityContext(withTrustedRoots: true));
-        client.badCertificateCallback = (cert, host, port) => false;
-        return client;
-      },
-      validateCertificate: (certificate, host, port) {
-        if (certificate == null) {
-          return false;
-        }
-
-        // Hash the certificate bytes (DER)
-        final Digest hash = sha256.convert(certificate.der);
-        final String fingerprint = _formatFingerprint(hash.bytes);
-        
-        AppLogger.d('🛡️ Verifying Certificate Pin: $fingerprint');
-
-        if (_pinnedFingerprints.contains(fingerprint)) {
-          AppLogger.i('🔒 Certificate pinning successful for $host');
-          return true;
-        }
-
-        AppLogger.f('🚨 CERTIFICATE PINNING FAILED for $host! Expected one of $_pinnedFingerprints but got $fingerprint');
-        return false;
-      },
-    );
-
     return _dio!;
-  }
-
-  static String _formatFingerprint(List<int> bytes) {
-    return bytes
-        .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
-        .join(':');
   }
 
   // -----------------------

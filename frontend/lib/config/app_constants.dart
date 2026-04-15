@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AppConstants {
   // 🌍 Production Ready API Configuration
   // Centralized URL, forcefully defaulting to the rendering backend for production build
-  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'https://convenz-backend.onrender.com/api/v1');
+  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'https://convenz.onrender.com/api/v1');
   
   // 🏁 API Sub-Paths (Relative to apiBaseUrl)
   // Ensure paths match exactly with backend/server.js mount points
