@@ -1,276 +1,123 @@
-# ConVenZ Vendor Integration Guide (Customer ↔ Vendor)
+# 🔌 ConVenZ External Vendor Integration Guide
 
-This document defines the **contract** between:
+Welcome to the ConVenZ integration protocol. This document outlines how external vendor systems communicate with the **ConVenZ Customer Backend**. 
 
-- **Customer Backend (you)**: ConVenZ Customer backend
-- **Vendor Backend (them)**: Vendor partner backend (assigns vendors + updates status)
-
-Goal: **fast, reliable, zero-ambiguity integration** for production.
+Follow this guide to ensure seamless synchronization of service requests and real-time status updates.
 
 ---
 
-## 1) Environments
+## 🏗️ 1. Architecture Overview
 
-### Customer Backend (Production)
-- **Base URL**: `https://convenz.onrender.com/api/v1`
+The integration follows a bidirectional communication model:
 
-### Vendor Backend (Production)
-- **Base URL**: _(vendor must provide)_ e.g. `https://vendor.example.com/vendor-api/v1`
-
----
-
-## 2) Authentication & Security (Recommended)
-
-### 2.1 Server-to-Server secret (required)
-Use a shared secret for all server-to-server calls (webhooks).
-
-- Customer backend stores: `SERVER_SECRET` (Render env var)
-- Vendor backend stores: the same secret value (keep it private)
-
-**Headers**
-- Vendor → Customer: `x-server-secret: <SERVER_SECRET>`
-
-> Never share JWT secrets, MongoDB URI, Firebase service account JSON, or admin secrets with the vendor team.
-
-### 2.2 App request signing (FYI)
-Mobile apps calling the Customer backend include:
-- `X-Timestamp` (epoch millis)
-- `X-Signature` (HMAC-SHA256 of `METHOD|PATH|TIMESTAMP|BODY_JSON`)
-
-Vendor backend does **not** need app signing. Vendor backend uses server-to-server secret headers instead.
+1.  **Outbound:** ConVenZ sends a `New Job` request to your server when a customer places an order.
+2.  **Inbound (Callbacks):** Your server sends a `Status Update` back to ConVenZ as the vendor progresses with the job.
 
 ---
 
-## 3) Data model (Shared identifiers)
+## 📡 2. Outbound: New Job Request
+**Request from ConVenZ → Your Server**
 
-### 3.1 Booking ID
-All cross-system updates must include:
-- `bookingId` (string or number; treat as opaque identifier)
+When a booking is created, ConVenZ sends a `POST` request to your configured endpoint.
 
-### 3.2 Vendor ID
-Vendor backend is the source-of-truth for:
-- `vendorId`
+-   **Method:** `POST`
+-   **Endpoint:** (Configured in your integration settings)
+-   **Payload Structure:**
 
-Customer backend stores vendor ID to relate subsequent status updates.
-
----
-
-## 4) Status lifecycle (Source of truth)
-
-Vendor backend must treat the following as canonical booking statuses:
-
-- `accepted`
-- `rejected`
-- `enroute`
-- `completed`
-- `cancelled`
-
-Rules:
-- `accepted` or `rejected` must be sent quickly (SLA target < 5s after vendor decision).
-- `enroute` should be sent when vendor starts traveling.
-- `completed` when job is complete.
-- `cancelled` if vendor/customer cancels.
-
----
-
-## 5) Webhooks / API Endpoints
-
-### 5.1 Vendor → Customer: status update (REQUIRED)
-Vendor backend calls the Customer backend whenever a booking status changes.
-
-**Endpoint (Customer backend)**
-- `POST /api/v1/user/booking/status-update`
-
-**Headers**
-- `Content-Type: application/json`
-- `x-server-secret: <SERVER_SECRET>`
-- `x-idempotency-key: <uuid>` (recommended; see section 7)
-
-**Body**
 ```json
 {
-  "bookingId": "123",
-  "status": "accepted",
-  "vendorId": "V001",
-  "otpStart": 1234,
-  "rejectionReason": "Optional reason for rejection"
-}
-```
-
-Notes:
-- `otpStart` is optional. Use if you want OTP-based job start verification.
-- `rejectionReason` required only when `status="rejected"` (recommended).
-
-**Success response**
-```json
-{
-  "success": true,
-  "message": "Status updated"
-}
-```
-
-**Error responses**
-- `401`: bad/missing `x-server-secret`
-- `400`: validation errors
-- `500`: server error (should be retried by vendor backend)
-
----
-
-### 5.2 Customer → Vendor: create/dispatch a job (RECOMMENDED)
-When a customer creates a booking, the Customer backend notifies Vendor backend for assignment.
-
-**Endpoint (Vendor backend)**
-- Vendor must expose an endpoint (recommended): `POST /jobs/create`
-
-**Headers**
-- `Content-Type: application/json`
-- `x-customer-server-secret: <CUSTOMER_SERVER_SECRET>` _(recommended; vendor can choose exact header name)_
-- `x-idempotency-key: <uuid>` (recommended)
-
-**Body (minimum recommended)**
-```json
-{
-  "bookingId": "123",
-  "serviceType": "Cleaning",
-  "jobDescription": "Deep cleaning 2BHK",
-  "scheduledAt": "2026-04-15T10:30:00Z",
+  "bookingId": 10045,            // Unique ConVenZ Booking ID
+  "customerId": 42,               // ConVenZ User ID
+  "customerName": "John Doe",
+  "customerPhone": "9999888877",
+  "service": "Plumbing",         // Requested Service Category
+  "description": "Leaky tap",     // Customer's job description
   "location": {
-    "lat": 19.076,
-    "lng": 72.8777,
-    "address": "Kurla West, Mumbai - 400070, Maharashtra, India"
-  },
-  "customer": {
-    "userId": "9",
-    "name": "Optional",
-    "phoneMasked": "+91 12****7890"
+    "latitude": 12.9716,
+    "longitude": 77.5946,
+    "address": "123 Main St, Bangalore"
   }
 }
 ```
 
-**Success response (vendor → customer)**
-```json
-{
-  "success": true,
-  "vendorId": "V001",
-  "etaMins": 25
+---
+
+## 🔄 3. Inbound: Vendor Status Callback
+**Request from Your Server → ConVenZ**
+
+Use this endpoint to update ConVenZ when a vendor is assigned or when the job status changes.
+
+-   **Endpoint:** `https://convenz.onrender.com/api/v1/external/vendor-update`
+-   **Method:** `POST`
+-   **Authentication Header:** 
+    -   Key: `x-vendor-secret`
+    -   Value: `YOUR_SECRET_KEY` (Provided by ConVenZ)
+
+### 📥 Payload Structure
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `assignedOrderId` | `int` | **Required.** The `bookingId` received in the initial request. |
+| `status` | `string` | **Required.** The new status (see allowed list below). |
+| `vendorName` | `string` | **Required.** Name of the assigned vendor. |
+| `vendorId` | `string` | ID of the vendor in your system. |
+| `vendorPhone` | `string` | Contact number of the vendor. |
+| `vendorAddress`| `string` | Current location/base of the vendor. |
+| `serviceType` | `string` | The specific sub-service being performed. |
+
+### 🚦 Allowed Statuses & Flow
+ConVenZ enforces a strict state machine. Updates that violate this flow will return a `400 Bad Request`.
+
+1.  **`accepted`**: A vendor has been found and confirmed.
+2.  **`enroute`**: The vendor is traveling to the customer's location.
+3.  **`completed`**: The job is finished successfully.
+4.  **`rejected`**: No vendors are available (closes the order).
+5.  **`cancelled`**: The job was aborted by the vendor system.
+
+---
+
+## 🔐 4. Security Requirements
+
+1.  **Secret Header:** All callbacks to ConVenZ **must** include the `x-vendor-secret` header. Requests without it or with incorrect keys will be rejected with a `401 Unauthorized`.
+2.  **HTTPS:** All communication must occur over TLS 1.2 or higher.
+3.  **Timeout:** Your server should respond to the initial `New Job` request within **10 seconds**.
+
+---
+
+## 🛠️ 5. Example Callback Implementation (Node.js)
+
+```javascript
+const axios = require('axios');
+
+async function updateConvenzStatus(bookingId, status, vendorDetails) {
+  try {
+    const response = await axios.post('https://convenz.onrender.com/api/v1/external/vendor-update', {
+      assignedOrderId: bookingId,
+      status: status, // e.g., "accepted"
+      vendorName: vendorDetails.name,
+      vendorPhone: vendorDetails.phone,
+      vendorId: vendorDetails.id
+    }, {
+      headers: {
+        'x-vendor-secret': 'YOUR_CONVENZ_SECRET_KEY'
+      }
+    });
+
+    console.log('✅ Update successful:', response.data);
+  } catch (error) {
+    console.error('❌ Update failed:', error.response.data);
+  }
 }
 ```
 
-**Failure response**
-```json
-{
-  "success": false,
-  "message": "No vendors available right now"
-}
-```
-
 ---
 
-## 6) Performance requirements (Fast request/response)
+## ❓ 6. Error Reference
 
-To avoid user-facing delays:
-
-### Timeouts
-- Customer → Vendor webhook timeout: **3–5 seconds**
-- Vendor → Customer status update timeout: **3–5 seconds**
-
-### Retries (on network/5xx)
-- Retry up to **3 times**
-- Backoff: **0.5s, 1.5s, 3s**
-- Do **not** retry on `401/403` (auth issue) or `400/422` (bad payload).
-
-### Response payload size
-- Keep JSON bodies small (< 10KB).
-- Do not embed images or large arrays.
-
----
-
-## 7) Idempotency (Prevents duplicate updates)
-
-Both systems should support **idempotency keys**:
-
-- Client sends: `x-idempotency-key: <uuid>`
-- Server stores the key + response for a short TTL (e.g., 5 minutes)
-- If same key is received again, return the same response without re-processing.
-
-Customer backend already supports idempotency replay for:
-- `POST /api/v1/user/booking/status-update` (via `x-idempotency-key`, 5 minute TTL)
-
-This is critical because retries are expected in production.
-
----
-
-## 8) Observability (Logs that make debugging easy)
-
-### Customer backend
-- Returns `x-request-id` on every response.
-- Logs request events with that id (Render logs).
-
-### Vendor backend (must implement)
-Vendor should log for every webhook call:
-- timestamp
-- bookingId
-- status
-- HTTP status code returned
-- latency ms
-- idempotency key
-- request-id (if returned)
-
----
-
-## 9) Required items vendor must deliver
-
-1) **Vendor backend base URL**
-2) Agreement on a shared server secret (Customer uses `SERVER_SECRET`)
-3) Implement vendor endpoint:
-   - `POST /jobs/create`
-4) Implement outbound webhook to customer:
-   - `POST https://convenz.onrender.com/api/v1/user/booking/status-update`
-5) Provide a test vendorId + test flow
-
----
-
-## 10) What the Customer system will send to vendor (summary)
-
-- bookingId
-- serviceType
-- jobDescription
-- scheduledAt
-- customer location (lat/lng/address)
-- masked customer identifier info (no sensitive secrets)
-
----
-
-## 11) What vendor will send to Customer (summary)
-
-- bookingId
-- status transitions (accepted/rejected/enroute/completed/cancelled)
-- vendorId (once assigned)
-- otpStart (optional)
-- rejectionReason (optional)
-
----
-
-## 12) Quick test commands (for vendor devs)
-
-### Status update (vendor → customer) example
-```bash
-curl -X POST "https://convenz.onrender.com/api/v1/user/booking/status-update" \
-  -H "Content-Type: application/json" \
-  -H "x-server-secret: <SERVER_SECRET>" \
-  -H "x-idempotency-key: 2d0f3cda-4ee7-4f0a-9b34-4c6c3c3f0b50" \
-  -d '{"bookingId":"123","status":"accepted","vendorId":"V001"}'
-```
-
----
-
-## 13) Change control
-
-Any changes to:
-- status values
-- required fields
-- auth headers
-- endpoint paths
-
-Must be communicated and versioned to prevent production breaks.
-
+| Code | Meaning | Action |
+| :--- | :--- | :--- |
+| `200` | OK | Update successful. |
+| `401` | Unauthorized | Check your `x-vendor-secret` header. |
+| `404` | Not Found | `assignedOrderId` does not match any active booking. |
+| `400` | Bad Request | Invalid status transition or missing fields. |
+| `500`| Server Error | Internal ConVenZ error. Retry after 5 mins. |
