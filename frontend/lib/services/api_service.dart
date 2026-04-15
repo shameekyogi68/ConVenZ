@@ -215,8 +215,8 @@ class ApiService {
 }
 
 class _CacheEntry {
+  _CacheEntry({required this.data, required this.expiry});
+
   final Map<String, dynamic> data;
   final DateTime expiry;
-  
-  _CacheEntry({required this.data, required this.expiry});
 }
