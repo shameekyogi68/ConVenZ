@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { seedDefaultPlansIfEmpty } from "../utils/seedPlans.js";
 
 // Fail fast on queries when the DB is not connected.
 // Without this, Mongoose silently buffers operations and they execute
@@ -15,6 +16,11 @@ const BASE_DELAY_MS = 2000; // doubles each attempt: 2s, 4s, 8s, 16s, 32s
 mongoose.connection.on("connected", () =>
   console.log(`✅ MongoDB connected | DB: ${mongoose.connection.name}`)
 );
+
+// Seed minimum subscription plans for production UX.
+mongoose.connection.on("connected", () => {
+  seedDefaultPlansIfEmpty().catch(() => {});
+});
 mongoose.connection.on("disconnected", () =>
   console.warn("⚠️  MongoDB disconnected — waiting for reconnect")
 );
