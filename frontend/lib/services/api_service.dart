@@ -136,7 +136,7 @@ class ApiService {
       String absoluteUrl, Map<String, dynamic> data, {int retries = 3}) async {
     for (var attempt = 1; attempt <= retries; attempt++) {
       try {
-        final response =
+        final Response<Map<String, dynamic>> response =
             await _client.post<Map<String, dynamic>>(
           absoluteUrl,
           data: data,
@@ -166,7 +166,7 @@ class ApiService {
       {int retries = 3}) async {
     for (var attempt = 1; attempt <= retries; attempt++) {
       try {
-        final response =
+        final Response<Map<String, dynamic>> response =
             await _client.get<Map<String, dynamic>>(absoluteUrl);
         return _handleDioResponse(response);
       } on DioException catch (e) {
