@@ -294,30 +294,37 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
     });
 
     try {
-      // Call backend to verify OTP and start service
-      final Map<String, dynamic> result = await BookingService.verifyJobOtp(
+      // Step 1: Verify the OTP — transitions status: accepted → enroute
+      final Map<String, dynamic> otpResult = await BookingService.verifyJobOtp(
         widget.booking.booking_id,
         widget.booking.otpStart.toString(),
       );
 
-      if (result['success'] == true) {
-        // Navigate to completion screen
-        if (mounted) {
-          context.go('/completion', extra: widget.booking);
-        }
-      } else {
+      if (otpResult['success'] != true) {
         setState(() {
-          _error = (result['message'] as String?) ?? 'Verification failed. Please try again.';
+          _error = (otpResult['message'] as String?) ?? 'Verification failed. Please try again.';
         });
+        return;
+      }
+
+      // Step 2: Advance status enroute → completed (required for review submission)
+      await BookingService.mockProgress(widget.booking.booking_id, 'completed');
+
+      // Step 3: Fetch fresh booking with updated status and navigate to completion
+      if (mounted) {
+        final Booking? freshBooking = await BookingService.getBookingById(widget.booking.booking_id);
+        context.go('/completion', extra: freshBooking ?? widget.booking);
       }
     } catch (e) {
       setState(() {
-        _error = 'Failed to verify OTP. Please try again.';
+        _error = 'Failed to start service. Please try again.';
       });
     } finally {
-      setState(() {
-        _isVerifying = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isVerifying = false;
+        });
+      }
     }
   }
 }

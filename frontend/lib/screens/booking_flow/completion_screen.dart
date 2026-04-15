@@ -165,7 +165,7 @@ class _CompletionScreenState extends State<CompletionScreen> {
 
               const SizedBox(height: 24),
 
-              // Submit button or error message
+              // Error message
               if (_error != null)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -180,13 +180,29 @@ class _CompletionScreenState extends State<CompletionScreen> {
                     style: TextStyle(color: Colors.red.shade700, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
-                )
-              else
-                PrimaryButton(
-                  text: 'Submit Feedback',
-                  isLoading: _isSubmitting,
-                  onPressed: _submitFeedback,
-                ).animate().fade(delay: 600.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+                ),
+
+              PrimaryButton(
+                text: 'Submit Feedback',
+                isLoading: _isSubmitting,
+                onPressed: _isSubmitting ? null : _submitFeedback,
+              ).animate().fade(delay: 600.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => context.go('/home'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryTeal,
+                    side: const BorderSide(color: AppColors.primaryTeal),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                  ),
+                  child: const Text('Skip & Go Home', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ).animate().fade(delay: 650.ms),
 
               const SizedBox(height: 40),
             ],
@@ -197,13 +213,6 @@ class _CompletionScreenState extends State<CompletionScreen> {
   }
 
   Future<void> _submitFeedback() async {
-    if (_feedbackController.text.trim().isEmpty) {
-      setState(() {
-        _error = 'Please provide a rating before submitting feedback.';
-      });
-      return;
-    }
-
     setState(() {
       _isSubmitting = true;
       _error = null;

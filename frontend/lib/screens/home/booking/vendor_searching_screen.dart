@@ -74,15 +74,8 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
           case 'accepted':
             _timeoutTimer?.cancel();
             _pollSubscription?.cancel();
-            context.go('/vendorFound', extra: {
-              'bookingId': widget.bookingId,
-              'vendorName': booking.vendorName,
-              'vendorPhone': booking.vendorPhone ?? '',
-              'vendorAddress': booking.location?['address'] as String? ?? '',
-              'service': booking.selectedService,
-              'date': booking.date,
-              'time': booking.time,
-            });
+            // Navigate directly to vendor details with the full Booking object
+            context.go('/vendorDetails', extra: booking);
           case 'rejected':
           case 'cancelled':
             _timeoutTimer?.cancel();

@@ -143,7 +143,8 @@ export const getUserBookings = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const getBookingDetails = asyncHandler(async (req, res) => {
   const userId = req.user.user_id;
-  const booking = await Booking.findOne({ booking_id: req.params.bookingId });
+  // select +otpStart so the Flutter OTP screen can display the code
+  const booking = await Booking.findOne({ booking_id: req.params.bookingId }).select("+otpStart");
   if (!booking) {
     res.status(404);
     throw new Error("Booking not found");
