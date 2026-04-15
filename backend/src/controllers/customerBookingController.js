@@ -251,6 +251,7 @@ export const mockAssignVendor = asyncHandler(async (req, res) => {
   // Assign a deterministic mock vendor and mark accepted.
   booking.vendorId = 9999;
   booking.status = "accepted";
+  booking.otpStart = Math.floor(1000 + Math.random() * 9000);
   booking.distance = 0;
   booking.externalVendor = {
     vendorId: "MOCK-9999",
@@ -268,6 +269,48 @@ export const mockAssignVendor = asyncHandler(async (req, res) => {
     message: "Mock vendor assigned",
     data: booking,
   });
+});
+
+/* ------------------------------------------------------------
+   🧪 MOCK: PROGRESS BOOKING STATUS (Customer-only, for QA)
+------------------------------------------------------------ */
+export const mockProgressBooking = asyncHandler(async (req, res) => {
+  const userId = req.user.user_id;
+  const bookingId = req.params.bookingId;
+  const { status } = req.body;
+
+  const booking = await Booking.findOne({ booking_id: bookingId });
+  if (!booking) {
+    return res.status(404).json({ success: false, message: "Booking not found" });
+  }
+  if (booking.userId !== userId) {
+    return res.status(403).json({ success: false, message: "Access denied" });
+  }
+  if (booking.vendorId !== 9999) {
+    return res.status(400).json({ success: false, message: "Mock progression is only allowed for mock vendor bookings" });
+  }
+
+  const next = String(status || "").toLowerCase();
+  if (!["enroute", "completed"].includes(next)) {
+    return res.status(400).json({ success: false, message: "Invalid mock status. Use enroute or completed." });
+  }
+
+  if (!booking.otpStart) {
+    booking.otpStart = Math.floor(1000 + Math.random() * 9000);
+  }
+
+  // Simple allowed transitions for mock
+  if (next === "enroute" && !["accepted", "pending", "enroute"].includes(booking.status)) {
+    return res.status(400).json({ success: false, message: `Cannot move to enroute from ${booking.status}` });
+  }
+  if (next === "completed" && !["accepted", "enroute"].includes(booking.status)) {
+    return res.status(400).json({ success: false, message: `Cannot move to completed from ${booking.status}` });
+  }
+
+  booking.status = next;
+  await booking.save();
+
+  return res.status(200).json({ success: true, message: "Mock status updated", data: booking });
 });
 
 /* ------------------------------------------------------------

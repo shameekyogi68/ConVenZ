@@ -22,6 +22,7 @@ class Booking { // Subscription-based model
   factory Booking.fromJson(Map<String, dynamic> json) {
     // Handle both flat and nested 'vendor' object from backend
     final vendorData = json['vendor'] as Map<String, dynamic>?;
+    final externalVendor = json['externalVendor'] as Map<String, dynamic>?;
     
     return Booking(
       id: json['_id']?.toString() ?? '',
@@ -38,7 +39,7 @@ class Booking { // Subscription-based model
       distance: json['distance'] != null ? (json['distance'] as num).toDouble() : null,
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'] as String) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'] as String) : null,
-      vendor: vendorData,
+      vendor: vendorData ?? externalVendor,
     );
   }
   final String id;
@@ -66,12 +67,18 @@ class Booking { // Subscription-based model
     if (vendor != null && vendor!['name'] != null) {
       return vendor!['name'] as String;
     }
+    if (vendor != null && vendor!['vendorName'] != null) {
+      return vendor!['vendorName'] as String;
+    }
     return vendorId != null ? 'Vendor #$vendorId' : 'Searching...';
   }
 
   String? get vendorPhone {
     if (vendor != null && vendor!['phone'] != null) {
       return vendor!['phone']?.toString();
+    }
+    if (vendor != null && vendor!['vendorPhone'] != null) {
+      return vendor!['vendorPhone']?.toString();
     }
     return null;
   }

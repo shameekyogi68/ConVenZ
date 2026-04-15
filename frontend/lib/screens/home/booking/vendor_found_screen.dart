@@ -133,6 +133,13 @@ class VendorFoundScreen extends StatelessWidget {
 
                   const SizedBox(height: 28),
 
+                  PrimaryButton(
+                    text: 'Track Booking',
+                    onPressed: () => context.push('/bookingTracking', extra: {'bookingId': bookingId}),
+                  ).animate().fade(delay: 180.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+
+                  const SizedBox(height: 12),
+
                   if (vendorPhone.isNotEmpty)
                     PrimaryButton(
                       text: 'Call Vendor',

@@ -120,4 +120,12 @@ class BookingService {
       return {'success': false, 'message': 'Failed to assign mock vendor: $e'};
     }
   }
+
+  static Future<Map<String, dynamic>> mockProgress(String bookingId, String status) async {
+    try {
+      return await ApiService.post('/user/booking/$bookingId/mock-progress', {'status': status});
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to update mock status: $e'};
+    }
+  }
 }

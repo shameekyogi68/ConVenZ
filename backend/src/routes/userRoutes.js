@@ -22,6 +22,7 @@ import {
   verifyJobOtp,
   submitReview,
   mockAssignVendor,
+  mockProgressBooking,
 } from "../controllers/customerBookingController.js";
 import {
   checkUserBlocked,
@@ -136,6 +137,9 @@ router.get("/user/booking/:bookingId", protect, getBookingDetails); // Alias
 // Mock assign vendor (QA/testing only)
 router.post("/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor);
 router.post("/user/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor); // Alias
+
+router.post("/booking/:bookingId/mock-progress", protect, mockProgressBooking);
+router.post("/user/booking/:bookingId/mock-progress", protect, mockProgressBooking); // Alias
 
 /* ------------------------------------------
    🔒 ADMIN ROUTES - User Blocking (PROTECTED)

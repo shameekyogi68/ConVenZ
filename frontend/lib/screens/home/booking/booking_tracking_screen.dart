@@ -74,7 +74,7 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
   }
 
   Future<void> _cancelBooking() async {
-    final confirm = await showDialog<bool>(
+    final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -450,10 +450,21 @@ class _BookingTrackingScreenState extends State<BookingTrackingScreen> {
 
   Widget _buildActionButtons() {
     final String status = _booking!.status.toLowerCase();
-    final showCancel = status == 'pending' || status == 'accepted';
+    final bool showCancel = status == 'pending' || status == 'accepted';
+    final isMock = _booking!.vendorId == 9999;
 
     return Column(
       children: [
+        if (isMock && status != 'completed') ...[
+          PrimaryButton(
+            text: status == 'accepted' ? 'Mock: Vendor Enroute' : 'Mock: Complete Service',
+            onPressed: () async {
+              final nextStatus = status == 'accepted' ? 'enroute' : 'completed';
+              await BookingService.mockProgress(widget.bookingId, nextStatus);
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
         if (showCancel) ...[
           SizedBox(
             width: double.infinity,
