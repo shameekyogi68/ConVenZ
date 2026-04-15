@@ -134,9 +134,9 @@ class ApiService {
   // -----------------------
   static Future<Map<String, dynamic>> postUrl(
       String absoluteUrl, Map<String, dynamic> data, {int retries = 3}) async {
-    for (int attempt = 1; attempt <= retries; attempt++) {
+    for (var attempt = 1; attempt <= retries; attempt++) {
       try {
-        final Response<Map<String, dynamic>> response =
+        final response =
             await _client.post<Map<String, dynamic>>(
           absoluteUrl,
           data: data,
@@ -164,9 +164,9 @@ class ApiService {
   // -----------------------
   static Future<Map<String, dynamic>> getUrl(String absoluteUrl,
       {int retries = 3}) async {
-    for (int attempt = 1; attempt <= retries; attempt++) {
+    for (var attempt = 1; attempt <= retries; attempt++) {
       try {
-        final Response<Map<String, dynamic>> response =
+        final response =
             await _client.get<Map<String, dynamic>>(absoluteUrl);
         return _handleDioResponse(response);
       } on DioException catch (e) {
