@@ -29,6 +29,17 @@ class ServiceDetailsScreen extends StatefulWidget {
 }
 
 class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
+  static const Set<String> _allowedServices = {
+    'Cleaning',
+    'Plumbing',
+    'Electrician',
+    'Painting',
+    'Moving',
+    'AC Repair',
+    'Sofa Cleaning',
+    'Car Wash',
+  };
+
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   final TextEditingController _descriptionController = TextEditingController();
@@ -41,6 +52,20 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
   }
 
   Future<void> _createBooking() async {
+    final String? service = widget.selectedService;
+    if (service == null || !_allowedServices.contains(service)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a valid service from the list'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -55,7 +80,8 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
     }
 
     final String formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-    final String formattedTime = '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
+    final String formattedTime =
+        '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}';
 
     setState(() => _isLoading = true);
 
@@ -87,14 +113,18 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
         return;
       }
 
+      final String safeAddress = widget.address.trim().isNotEmpty
+          ? widget.address.trim()
+          : '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+
       final Map<String, dynamic> result = await BookingService.createBooking(
-        selectedService: widget.selectedService ?? 'General Service',
+        selectedService: service,
         selectedDate: formattedDate,
         selectedTime: formattedTime,
         userLocation: {
           'latitude': lat,
           'longitude': lng,
-          'address': widget.address,
+          'address': safeAddress,
         },
         jobDescription: _descriptionController.text.trim(),
       );
@@ -111,7 +141,7 @@ class _ServiceDetailsScreenState extends State<ServiceDetailsScreen> {
           final String bookingId = ((data?['_id'] ?? result['bookingId']) as Object?)?.toString() ?? '';
           context.go('/vendorSearching', extra: {
             'bookingId': bookingId,
-            'serviceName': widget.selectedService ?? 'General Service',
+            'serviceName': service,
           });
         } else if (!blocked) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -27,8 +27,10 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
   });
   
   if (activePending >= 1) {
-    res.status(400);
-    throw new Error("You already have an active booking in progress. Please complete or cancel it first.");
+    return res.status(400).json({
+      success: false,
+      message: "You already have an active booking in progress. Please complete or cancel it first.",
+    });
   }
 
   // Create booking
@@ -71,7 +73,13 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
 
   if (!vendorMatch) {
     if (customer.fcmToken) {
-      sendNotification(customer.fcmToken, "⚠️ No Vendor Available", `Searching for ${selectedService} vendors...`, { bookingId: String(newBooking.booking_id) }).catch(() => {});
+      // Don't alarm the user immediately; we're still searching/dispatching on external vendor systems.
+      sendNotification(
+        customer.fcmToken,
+        "🔎 Searching for a vendor",
+        `We’re looking for nearby ${selectedService} vendors. You’ll be notified once someone accepts.`,
+        { type: "SEARCHING_VENDOR", bookingId: String(newBooking.booking_id) }
+      ).catch(() => {});
     }
     return res.status(201).json({ success: true, message: "Booking created, searching for vendor...", data: newBooking, vendorFound: false });
   }
