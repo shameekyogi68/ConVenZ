@@ -20,6 +20,11 @@ const initializeFirebase = () => {
     }
 
     if (!serviceAccount) throw new Error("Firebase configuration not found.");
+    
+    // 🛡️ Fix for escaped newlines in private keys (common on Render/Heroku)
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),

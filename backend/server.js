@@ -143,7 +143,7 @@ app.get("/health", (req, res) => {
 // ─────────────────────────────────────────────
 // ❌ Global Error Handling (MUST be last)
 // ─────────────────────────────────────────────
-app.use("(.*)", notFound);
+app.use(notFound);
 app.use(errorHandler);
 
 // ─────────────────────────────────────────────
