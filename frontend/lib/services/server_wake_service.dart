@@ -32,7 +32,7 @@ class ServerWakeService {
   /// Called on app start. Returns true when the server is ready.
   /// Shows a cold-start wait of up to 75 seconds.
   static Future<bool> wakeUp({void Function(String status)? onStatusUpdate}) async {
-    final Stopwatch stopwatch = Stopwatch()..start();
+    final stopwatch = Stopwatch()..start();
 
     onStatusUpdate?.call('Connecting to server...');
     AppLogger.i('🌐 Pinging server at $_healthUrl');
