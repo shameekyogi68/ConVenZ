@@ -30,8 +30,8 @@ class ApiService {
 
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      connectTimeout: const Duration(seconds: 45),
+      receiveTimeout: const Duration(seconds: 45),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -133,32 +133,57 @@ class ApiService {
   // POST REQUEST (absolute URL)
   // -----------------------
   static Future<Map<String, dynamic>> postUrl(
-      String absoluteUrl, Map<String, dynamic> data) async {
-    try {
-      final Response<Map<String, dynamic>> response = await _client.post<Map<String, dynamic>>(
-        absoluteUrl,
-        data: data,
-      );
-      return _handleDioResponse(response);
-    } on DioException catch (e) {
-      return _handleDioException(e);
-    } catch (e) {
-      return _handleException(e);
+      String absoluteUrl, Map<String, dynamic> data, {int retries = 3}) async {
+    for (int attempt = 1; attempt <= retries; attempt++) {
+      try {
+        final Response<Map<String, dynamic>> response =
+            await _client.post<Map<String, dynamic>>(
+          absoluteUrl,
+          data: data,
+        );
+        return _handleDioResponse(response);
+      } on DioException catch (e) {
+        // Retry on connection errors (server might be waking up)
+        if (attempt < retries &&
+            (e.type == DioExceptionType.connectionError ||
+                e.type == DioExceptionType.connectionTimeout)) {
+          AppLogger.w('⚠️ Request failed (attempt $attempt/$retries). Retrying in 6s...');
+          await Future<void>.delayed(const Duration(seconds: 6));
+          continue;
+        }
+        return _handleDioException(e);
+      } catch (e) {
+        return _handleException(e);
+      }
     }
+    return {'success': false, 'message': 'Server is unavailable. Please try again later.'};
   }
 
   // -----------------------
   // GET REQUEST (absolute URL)
   // -----------------------
-  static Future<Map<String, dynamic>> getUrl(String absoluteUrl) async {
-    try {
-      final Response<Map<String, dynamic>> response = await _client.get<Map<String, dynamic>>(absoluteUrl);
-      return _handleDioResponse(response);
-    } on DioException catch (e) {
-      return _handleDioException(e);
-    } catch (e) {
-      return _handleException(e);
+  static Future<Map<String, dynamic>> getUrl(String absoluteUrl,
+      {int retries = 3}) async {
+    for (int attempt = 1; attempt <= retries; attempt++) {
+      try {
+        final Response<Map<String, dynamic>> response =
+            await _client.get<Map<String, dynamic>>(absoluteUrl);
+        return _handleDioResponse(response);
+      } on DioException catch (e) {
+        // Retry on connection errors (server might be waking up)
+        if (attempt < retries &&
+            (e.type == DioExceptionType.connectionError ||
+                e.type == DioExceptionType.connectionTimeout)) {
+          AppLogger.w('⚠️ GET failed (attempt $attempt/$retries). Retrying in 6s...');
+          await Future<void>.delayed(const Duration(seconds: 6));
+          continue;
+        }
+        return _handleDioException(e);
+      } catch (e) {
+        return _handleException(e);
+      }
     }
+    return {'success': false, 'message': 'Server is unavailable. Please try again later.'};
   }
 
   // -----------------------
