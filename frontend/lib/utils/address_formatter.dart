@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import 'app_logger.dart';
@@ -9,10 +10,23 @@ class AddressFormatter {
   /// Uses the same logic as MapScreen to filter out "Unnamed Road" etc.
   static Future<String> getCleanAddress(double lat, double lng) async {
     try {
-      final Uri url = Uri.parse(
-          'https://api.opencagedata.com/geocode/v1/json?q=$lat,$lng&key=9a08437326c04ca486e1566500a3bc0a&language=en');
+      final String apiKey = dotenv.env['OPENCAGE_API_KEY'] ?? '';
+      if (apiKey.isEmpty) {
+        // Fallback: never block booking/location updates on missing geocoding config
+        return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+      }
 
-      final http.Response response = await http.get(url);
+      final Uri url = Uri.parse(
+        'https://api.opencagedata.com/geocode/v1/json'
+        '?q=${Uri.encodeComponent('$lat,$lng')}'
+        '&key=$apiKey'
+        '&language=en'
+        '&no_annotations=1'
+        '&limit=1',
+      );
+
+      final http.Response response =
+          await http.get(url).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -67,11 +81,14 @@ class AddressFormatter {
 
           return cleanedAddress;
         }
+      } else {
+        AppLogger.w('OpenCage failed: ${response.statusCode} ${response.body}');
       }
     } catch (e, stackTrace) {
       AppLogger.e('Address formatting error', e, stackTrace);
     }
 
-    return ''; // Return empty string on error
+    // Never return empty: backend/UI treat empty as "not found"
+    return '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
   }
 }
