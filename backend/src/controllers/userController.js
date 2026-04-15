@@ -6,6 +6,7 @@ import { sendNotification, sendOtpNotification } from "../utils/sendNotification
 import { generateToken } from "../middlewares/authMiddleware.js";
 
 import asyncHandler from "../utils/asyncHandler.js";
+import logger from "../utils/logger.js";
 
 /**
  * Hash a numeric OTP using HMAC-SHA256 so it is never stored in plaintext.
@@ -42,7 +43,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   const maskedPhone = String(phone).replace(/(\d{2})\d+(\d{2})/, '$1****$2');
-  console.log(`✅ OTP_GENERATED | User: ${user.user_id} | Phone: ${maskedPhone}`);
+  logger.info(`✅ OTP_GENERATED | User: ${user.user_id} | Phone: ${maskedPhone}`);
   
   // Send push notification with OTP (Fail-safe)
   const tokenToUse = fcmToken || user.fcmToken;
@@ -227,7 +228,7 @@ export const updateUserLocation = asyncHandler(async (req, res) => {
         address = response.data.results[0].formatted;
       }
     } catch {
-      console.warn("⚠️ Geocoding failed, using coordinates only.");
+      logger.warn("⚠️ Geocoding failed, using coordinates only.");
     }
   }
 

@@ -1,5 +1,6 @@
 import admin from "../config/firebase.js";
 import User from "../models/userModel.js";
+import logger from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -55,10 +56,10 @@ export const sendNotification = async (token, title, body, data = {}) => {
 
   try {
     const response = await admin.messaging().send(message);
-    console.log(`✅ FCM_SENT | ${new Date().toISOString()} | ID: ${response}`);
+    logger.info(`✅ FCM_SENT | ID: ${response}`);
     return response;
   } catch (error) {
-    console.error(`❌ FCM_FAILED | ${error.code} | ${error.message} | Token: ${token?.substring(0, 20)}…`);
+    logger.error(`❌ FCM_FAILED | ${error.code} | ${error.message} | Token: ${token?.substring(0, 20)}…`);
     if (isInvalidTokenError(error.code, error.message)) {
       const e = new Error(`Invalid or expired FCM token: ${error.message}`);
       e.cause = error;
@@ -97,9 +98,9 @@ export const sendMultipleNotifications = async (tokens, title, body, data = {}) 
             { fcmToken: { $in: staleTokens } },
             { $set: { fcmToken: "" } }
           );
-          console.log(`🧹 FCM_CLEANUP | Removed ${result.modifiedCount} stale token(s)`);
+          logger.info(`🧹 FCM_CLEANUP | Removed ${result.modifiedCount} stale token(s)`);
         } catch (cleanupErr) {
-          console.error(`❌ FCM_CLEANUP_FAILED | ${cleanupErr.message}`);
+          logger.error(`❌ FCM_CLEANUP_FAILED | ${cleanupErr.message}`);
         }
       }
     }
@@ -161,10 +162,10 @@ export const sendOtpNotification = async (fcmToken, otp, userId = null) => {
 
   try {
     const response = await admin.messaging().send(message);
-    console.log(`📲 OTP_PUSH_SENT | User: ${userId ?? 'N/A'}`);
+    logger.info(`📲 OTP_PUSH_SENT | User: ${userId ?? 'N/A'}`);
     return response;
   } catch (error) {
-    console.error(`❌ OTP_PUSH_FAILED | User: ${userId ?? 'N/A'} | ${error.message}`);
+    logger.error(`❌ OTP_PUSH_FAILED | User: ${userId ?? 'N/A'} | ${error.message}`);
     if (isInvalidTokenError(error.code, error.message)) {
       const e = new Error(`Invalid or expired FCM token: ${error.message}`);
       e.cause = error;
