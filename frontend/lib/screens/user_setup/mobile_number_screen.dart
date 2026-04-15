@@ -97,7 +97,7 @@ class _MobileNumberScreenState extends State<MobileNumberScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "We'll send an OTP to your number",
+                  "We’ll send an OTP notification to your device",
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 40),

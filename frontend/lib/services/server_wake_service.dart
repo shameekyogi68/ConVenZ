@@ -68,7 +68,7 @@ class ServerWakeService {
         onStatusUpdate?.call('Starting up server... (${stopwatch.elapsed.inSeconds}s)');
       }
       
-      await Future<void>.delayed(delay as Duration);
+      await Future<void>.delayed(delay);
     }
 
     _isServerAwake = false;

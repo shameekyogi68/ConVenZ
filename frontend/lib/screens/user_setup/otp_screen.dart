@@ -62,14 +62,6 @@ class _OtpScreenState extends State<OtpScreen> {
     });
   }
 
-  String get _maskedPhone {
-    final String phone = SharedPrefs.getPhone() ?? '';
-    if (phone.length >= 10) {
-      return '+91 ${phone.substring(0, 2)}****${phone.substring(6)}';
-    }
-    return '+91 **********';
-  }
-
   Future<void> _resendOtp() async {
     final String? phone = SharedPrefs.getPhone();
     if (phone == null) {
@@ -203,7 +195,7 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Sent to $_maskedPhone',
+                      'Check your notifications for the OTP',
                       style: const TextStyle(fontSize: 16, color: AppColors.darkGrey),
                     ),
                     const SizedBox(height: 40),

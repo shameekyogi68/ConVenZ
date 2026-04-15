@@ -13,6 +13,15 @@ export const verifySignature = (req, res, next) => {
     return next();
   }
 
+  // Allow health checks and root probes without signature
+  if (
+    req.method === "HEAD" ||
+    req.originalUrl === "/" ||
+    req.originalUrl === "/health"
+  ) {
+    return next();
+  }
+
   const signature = req.headers["x-signature"];
   const timestamp = req.headers["x-timestamp"];
 

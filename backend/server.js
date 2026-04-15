@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import * as Sentry from "@sentry/node";
 
@@ -32,6 +33,31 @@ connectDB();
 startHourlyNotifications();
 
 const app = express();
+
+// ─────────────────────────────────────────────
+// 🧾 Request correlation + basic access logs
+// ─────────────────────────────────────────────
+app.use((req, res, next) => {
+  const id = crypto.randomUUID();
+  /** @type {any} */ (req).id = id;
+  res.setHeader("x-request-id", id);
+
+  const start = Date.now();
+  res.on("finish", () => {
+    logger.info({
+      event: "REQUEST",
+      id,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - start,
+      ip: req.ip,
+      ua: req.headers["user-agent"],
+    });
+  });
+
+  next();
+});
 
 // ─────────────────────────────────────────────
 // 🧩 Express v5 compatibility shim
