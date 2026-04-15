@@ -128,7 +128,7 @@ class ApiService {
       {int retries = 3}) async {
         
     // 1️⃣ Check Cache
-    final cached = _cache[absoluteUrl];
+    final _CacheEntry? cached = _cache[absoluteUrl];
     if (cached != null && DateTime.now().isBefore(cached.expiry)) {
       AppLogger.d('⚡ CACHE HIT: $absoluteUrl');
       return cached.data;
@@ -140,7 +140,7 @@ class ApiService {
         final Response<Map<String, dynamic>> response =
             await _client.get<Map<String, dynamic>>(absoluteUrl);
             
-        final responseData = _handleDioResponse(response);
+        final Map<String, dynamic> responseData = _handleDioResponse(response);
         
         // Save to Cache if successful
         if (responseData['success'] == true) {
