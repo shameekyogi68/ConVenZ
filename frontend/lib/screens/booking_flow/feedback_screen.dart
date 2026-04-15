@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
+import '../../services/booking_service.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key, required this.booking});
@@ -17,6 +18,8 @@ class FeedbackScreen extends StatefulWidget {
 class _FeedbackScreenState extends State<FeedbackScreen> {
   final TextEditingController _feedbackController = TextEditingController();
   int _rating = 5;
+  bool _isSubmitting = false;
+  String? _error;
 
   final List<String> _ratingLabels = ['Terrible', 'Bad', 'Okay', 'Good', 'Excellent'];
 
@@ -154,27 +157,30 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ),
               ).animate().fade(delay: 250.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Error message
+              if (_error != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ).animate().fade(delay: 300.ms),
 
               PrimaryButton(
                 text: 'Submit Feedback',
-                onPressed: () async {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Thank you! Your feedback has been recorded.'),
-                      backgroundColor: AppColors.accentMint,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.all(16),
-                      duration: const Duration(milliseconds: 1500),
-                    ),
-                  );
-                  await Future<void>.delayed(const Duration(milliseconds: 1500));
-                  if (context.mounted) {
-                    context.go('/home');
-                  }
-                },
-              ).animate().fade(delay: 300.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+                isLoading: _isSubmitting,
+                onPressed: _isSubmitting ? null : _submitFeedback,
+              ).animate().fade(delay: 350.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
 
               const SizedBox(height: 16),
 
@@ -189,5 +195,48 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitFeedback() async {
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+
+    try {
+      final result = await BookingService.submitReview(
+        widget.booking.booking_id!,
+        _rating,
+        _feedbackController.text.trim(),
+      );
+
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thank you for your feedback!'),
+              backgroundColor: AppColors.primaryTeal,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: EdgeInsets.all(16),
+            ),
+          );
+          // Navigate to home after successful submission
+          context.go('/home');
+        }
+      } else {
+        setState(() {
+          _error = result['message'] ?? 'Failed to submit feedback. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to submit feedback. Please try again.';
+      });
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
   }
 }

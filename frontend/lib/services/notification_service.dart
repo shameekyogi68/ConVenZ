@@ -97,6 +97,7 @@ class NotificationService {
       final NotificationSettings settings = await _fcm.requestPermission();
 
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        AppLogger.w('Notification permission denied');
         return;
       }
 
@@ -114,8 +115,8 @@ class NotificationService {
       if (initial != null) {
         _handleTap(initial);
       }
-    } catch (_) {
-      // Silent — notification failure must never crash the app
+    } catch (e, stackTrace) {
+      AppLogger.e('Failed to initialize notification service', e, stackTrace);
     }
   }
 
@@ -128,8 +129,13 @@ class NotificationService {
       if (token != null) {
         _fcmToken = token;
         await _saveTokenToBackend(token);
+        AppLogger.d('FCM token refreshed and sent to backend');
+      } else {
+        AppLogger.w('Failed to get FCM token - token is null');
       }
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      AppLogger.e('Failed to refresh and send FCM token', e, stackTrace);
+    }
   }
 
   // ── Internal dispatch (foreground + background) ───────────
@@ -137,16 +143,21 @@ class NotificationService {
   /// Single routing function used by both foreground listener and
   /// the top-level background handler — guarantees identical behaviour.
   static Future<void> _dispatchLocalNotification(RemoteMessage message) async {
-    final type = message.data['type'] as String?;
+    try {
+      final type = message.data['type'] as String?;
+      AppLogger.d('Dispatching notification of type: $type');
 
-    if (type == _NotifType.otp) {
-      await _showOtp(message);
-    } else if (_NotifType.isBookingRelated(type)) {
-      await _showBooking(message);
-    } else if (type == _NotifType.marketing) {
-      await _showMarketing(message);
-    } else {
-      await _showGeneric(message);
+      if (type == _NotifType.otp) {
+        await _showOtp(message);
+      } else if (_NotifType.isBookingRelated(type)) {
+        await _showBooking(message);
+      } else if (type == _NotifType.marketing) {
+        await _showMarketing(message);
+      } else {
+        await _showGeneric(message);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('Failed to dispatch local notification', e, stackTrace);
     }
   }
 
@@ -352,17 +363,27 @@ class NotificationService {
     try {
       final String? authToken = SharedPrefs.getToken();
       if (authToken == null || authToken.isEmpty) {
-        // Not logged in yet — retry after a short delay (token refresh on login)
+        // Not logged in yet - retry after a short delay (token refresh on login)
         if (attempt < 3) {
+          AppLogger.d('Not logged in, retrying token save in ${attempt == 0 ? 2 : 5}s');
           await Future<void>.delayed(Duration(seconds: attempt == 0 ? 2 : 5));
           await _saveTokenToBackend(token, attempt: attempt + 1);
+        } else {
+          AppLogger.w('Max retries reached for token save - not logged in');
         }
         return;
       }
 
-      await ApiService.post('/fcm/update-token', {'fcmToken': token});
-    } catch (_) {
+      final response = await ApiService.post('/fcm/update-token', {'fcmToken': token});
+      if (response['success'] == true) {
+        AppLogger.d('FCM token saved to backend successfully');
+      } else {
+        AppLogger.w('Failed to save FCM token: ${response['message']}');
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('Error saving FCM token to backend (attempt $attempt)', e, stackTrace);
       if (attempt < 1) {
+        AppLogger.d('Retrying token save in 3s');
         await Future<void>.delayed(const Duration(seconds: 3));
         await _saveTokenToBackend(token, attempt: attempt + 1);
       }

@@ -4,11 +4,20 @@ import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
+import '../../services/booking_service.dart';
 
-class VendorDetailsScreen extends StatelessWidget {
-
+class VendorDetailsScreen extends StatefulWidget {
   const VendorDetailsScreen({super.key, required this.booking});
+
   final Booking booking;
+
+  @override
+  State<VendorDetailsScreen> createState() => _VendorDetailsScreenState();
+}
+
+class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
+  bool _isLoading = false;
+  String? _error;
 
   @override
   Widget build(BuildContext context) {
@@ -76,9 +85,9 @@ class VendorDetailsScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppColors.accentMint.withOpacity(0.4)),
                       ),
-                      child: const Text(
-                        '✓ Professional Assigned',
-                        style: TextStyle(
+                      child: Text(
+                        _getStatusText(),
+                        style: const TextStyle(
                           color: AppColors.primaryTeal,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -91,11 +100,12 @@ class VendorDetailsScreen extends StatelessWidget {
 
                   // Info card
                   _buildInfoCard([
-                    _InfoRow(icon: Icons.badge_outlined, label: 'Vendor Name', value: booking.vendorName),
-                    if (booking.vendorPhone != null)
-                      _InfoRow(icon: Icons.phone_android_rounded, label: 'Phone Number', value: booking.vendorPhone!),
-                    _InfoRow(icon: Icons.home_repair_service_outlined, label: 'Service Category', value: booking.serviceName),
-                    _InfoRow(icon: Icons.calendar_month_outlined, label: 'Scheduled On', value: '${booking.date} at ${booking.time}'),
+                    _InfoRow(icon: Icons.badge_outlined, label: 'Vendor Name', value: widget.booking.vendorName ?? 'Mock Vendor'),
+                    if (widget.booking.vendorPhone != null)
+                      _InfoRow(icon: Icons.phone_android_rounded, label: 'Phone Number', value: widget.booking.vendorPhone!),
+                    _InfoRow(icon: Icons.home_repair_service_outlined, label: 'Service Category', value: widget.booking.serviceName),
+                    _InfoRow(icon: Icons.calendar_month_outlined, label: 'Scheduled On', value: '${widget.booking.date} at ${widget.booking.time}'),
+                    _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: widget.booking.location?.address ?? 'Loading...'),
                   ]).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
                   const SizedBox(height: 32),
@@ -103,14 +113,36 @@ class VendorDetailsScreen extends StatelessWidget {
                   // CTA
                   PrimaryButton(
                     text: 'Proceed to OTP',
-                    onPressed: () => context.push('/bookingOtp', extra: booking),
+                    isLoading: _isLoading,
+                    onPressed: _isLoading ? null : _navigateToOtp,
                   ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
 
                   const SizedBox(height: 16),
 
+                  // Error message
+                  if (_error != null)
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 32),
+
                   Center(
                     child: Text(
-                      'Share the OTP only once the vendor arrives.',
+                      'Share OTP only once vendor arrives.',
                       style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                     ),
                   ),
@@ -123,6 +155,19 @@ class VendorDetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getStatusText() {
+    switch (widget.booking.status) {
+      case 'accepted':
+        return '✓ Professional Assigned';
+      case 'enroute':
+        return '🚶 Professional En Route';
+      case 'completed':
+        return '✅ Service Completed';
+      default:
+        return '⏳ Waiting for Professional';
+    }
   }
 
   Widget _buildInfoCard(List<_InfoRow> rows) {
@@ -177,6 +222,25 @@ class VendorDetailsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _navigateToOtp() {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    // Navigate to OTP screen with booking data
+    context.push('/bookingOtp', extra: widget.booking).then((_) {
+      setState(() {
+        _isLoading = false;
+      });
+    }).catchError((error) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Failed to navigate to OTP screen. Please try again.';
+      });
+    });
   }
 }
 

@@ -2,6 +2,7 @@ import Booking from "../models/bookingModel.js";
 import User from "../models/userModel.js";
 import { sendNotification } from "../utils/sendNotification.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import logger from "../utils/logger.js";
 
 /* ------------------------------------------------------------
    🔄 EXTERNAL VENDOR UPDATE CALLBACK
@@ -67,7 +68,7 @@ export const receiveVendorUpdate = asyncHandler(async (req, res) => {
   booking.status = newStatus;
   await booking.save();
 
-  console.log(`✅ EXTERNAL_CALLBACK_SUCCESS | Booking: ${booking.booking_id} | Status: ${booking.status}`);
+  logger.info(`✅ EXTERNAL_CALLBACK_SUCCESS | Booking: ${booking.booking_id} | Status: ${booking.status}`);
 
   // ✅ 4. Notify Customer (Non-blocking)
   const customer = await User.findOne({ user_id: booking.userId });

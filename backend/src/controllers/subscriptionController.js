@@ -3,6 +3,8 @@ import Subscription from "../models/subscriptionModel.js";
 import User from "../models/userModel.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import dayjs from "dayjs";
+import logger from "../utils/logger.js";
+import { sendNotification } from "../utils/sendNotification.js";
 
 
 // ─────────────────────────────────────────────
@@ -53,8 +55,12 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
   // ✅ SECURITY FIX: Use userId from verified JWT token, not from request body
   const userId = req.user.user_id;
   const { planId } = req.body;
+  const startTime = Date.now();
+  
+  logger.info(`SUBSCRIPTION_PURCHASE_ATTEMPT | User: ${userId} | PlanId: ${planId}`);
 
   if (!planId) {
+    logger.error(`SUBSCRIPTION_PURCHASE_FAILED | User: ${userId} | Reason: MISSING_PLAN_ID`);
     res.status(400);
     throw new Error("planId is required");
   }
@@ -62,9 +68,12 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
   // 1. Validate Plan exists and is active
   const plan = await Plan.findById(planId);
   if (!plan || !plan.active) {
+    logger.error(`SUBSCRIPTION_PURCHASE_FAILED | User: ${userId} | PlanId: ${planId} | Reason: PLAN_NOT_FOUND_OR_INACTIVE`);
     res.status(404);
     throw new Error("Plan not found or is inactive");
   }
+
+  logger.info(`SUBSCRIPTION_PLAN_VALIDATED | User: ${userId} | Plan: ${plan.name} | Price: ${plan.price} | Duration: ${plan.duration}`);
 
   // 2. Check if user already has an ACTIVE subscription
   const existingActiveSub = await Subscription.findOne({
@@ -74,6 +83,7 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
   });
 
   if (existingActiveSub) {
+    logger.error(`SUBSCRIPTION_PURCHASE_FAILED | User: ${userId} | Plan: ${plan.name} | Reason: ALREADY_HAS_ACTIVE_SUBSCRIPTION | ExistingPlan: ${existingActiveSub.currentPack} | Expiry: ${existingActiveSub.expiryDate}`);
     res.status(400);
     throw new Error(
       `You already have an active "${existingActiveSub.currentPack}" plan until ${existingActiveSub.expiryDate.toLocaleDateString("en-IN")}. Please wait for it to expire.`
@@ -81,13 +91,19 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
   }
 
   // 3. Mark any expired subscriptions as Expired (cleanup)
-  await Subscription.updateMany(
+  const expiredCleanup = await Subscription.updateMany(
     { userId, status: "Active", expiryDate: { $lte: new Date() } },
     { $set: { status: "Expired" } }
   );
+  
+  if (expiredCleanup.modifiedCount > 0) {
+    logger.info(`SUBSCRIPTION_CLEANUP_COMPLETED | User: ${userId} | ExpiredCount: ${expiredCleanup.modifiedCount}`);
+  }
 
   // 4. Calculate expiry date
   const expiryDate = calculateExpiry(plan.duration);
+  
+  logger.info(`SUBSCRIPTION_EXPIRY_CALCULATED | User: ${userId} | Plan: ${plan.name} | ExpiryDate: ${expiryDate.toISOString()}`);
 
   // 5. Create new subscription
   const newSub = await Subscription.create({
@@ -101,6 +117,25 @@ export const purchaseSubscription = asyncHandler(async (req, res) => {
 
   // 6. Link subscription reference to user profile
   await User.findOneAndUpdate({ user_id: userId }, { subscription: newSub._id });
+
+  logger.info(`SUBSCRIPTION_PURCHASE_SUCCESS | User: ${userId} | Plan: ${plan.name} | SubscriptionId: ${newSub._id} | Price: ${plan.price} | Expiry: ${expiryDate.toISOString()}`);
+
+  // Send subscription notification
+  try {
+    const user = await User.findOne({ user_id: userId });
+    if (user && user.fcmToken) {
+      sendNotification(user.fcmToken, "Subscription Activated!", `Your ${plan.name} subscription is now active until ${expiryDate.toLocaleDateString()}.`, { type: "subscription_activated" })
+        .then(() => logger.info(`SUBSCRIPTION_NOTIFICATION_SENT | User: ${userId} | Plan: ${plan.name}`))
+        .catch((err) => logger.error(`SUBSCRIPTION_NOTIFICATION_FAILED | User: ${userId} | Error: ${err.message}`));
+    } else {
+      logger.warn(`NO_FCM_TOKEN_FOR_SUBSCRIPTION | User: ${userId}`);
+    }
+  } catch (err) {
+    logger.error(`SUBSCRIPTION_NOTIFICATION_ERROR | User: ${userId} | Error: ${err.message}`);
+  }
+
+  const processingTime = Date.now() - startTime;
+  logger.info(`SUBSCRIPTION_PURCHASE_COMPLETE | User: ${userId} | Plan: ${plan.name} | ProcessingTime: ${processingTime}ms`);
 
   res.status(201).json({
     success: true,

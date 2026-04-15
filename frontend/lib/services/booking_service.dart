@@ -128,4 +128,29 @@ class BookingService {
       return {'success': false, 'message': 'Failed to update mock status: $e'};
     }
   }
+
+  // ------------------------------------------------------------
+  /// VERIFY job OTP (Service start confirmation)
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> verifyJobOtp(String bookingId, String otp) async {
+    try {
+      return await ApiService.post('/user/booking/$bookingId/verify-otp', {'otp': otp});
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to verify OTP: $e'};
+    }
+  }
+
+  // ------------------------------------------------------------
+  /// SUBMIT review and rating for completed booking
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> submitReview(String bookingId, int rating, String reviewText) async {
+    try {
+      return await ApiService.post('/user/booking/$bookingId/review', {
+        'rating': rating,
+        'reviewText': reviewText,
+      });
+    } catch (e) {
+      return {'success': false, 'message': 'Failed to submit review: $e'};
+    }
+  }
 }

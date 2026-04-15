@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -35,15 +35,35 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            frontend/.dart_tool
+            frontend/.packages
+            frontend/pubspec.lock
+          key: ${{ runner.os }}-flutter-${{ hashFiles('frontend/pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
 
       - name: Install Dependencies
         run: flutter pub get
 
+      - name: Verify Flutter Environment
+        run: flutter doctor -v
+
+      - name: Analyze Code
+        run: flutter analyze
+
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --shrink
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
           path: frontend/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30

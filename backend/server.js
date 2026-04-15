@@ -8,6 +8,7 @@ import compression from "compression";
 import crypto from "crypto";
 import mongoose from "mongoose";
 import * as Sentry from "@sentry/node";
+import jwt from "jsonwebtoken";
 
 // Env loaded at absolute top
 import connectDB from "./src/config/db.js";
@@ -36,34 +37,94 @@ const app = express();
 
 // ─────────────────────────────────────────────
 // 🧾 Request correlation + basic access logs
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────// Enhanced request correlation + user activity logging
 app.use((req, res, next) => {
   const id = crypto.randomUUID();
   /** @type {any} */ (req).id = id;
   res.setHeader("x-request-id", id);
 
   const start = Date.now();
+  const timestamp = new Date().toISOString();
+  
+  // Extract user info from JWT if available
+  let userInfo = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const decoded = jwt.decode(token);
+      if (decoded && typeof decoded === 'object' && decoded.userId) {
+        userInfo = {
+          userId: decoded.userId,
+          phone: decoded.phone,
+          role: decoded.role || 'customer'
+        };
+      }
+    } catch {
+      // Token decode failed - continue without user info
+    }
+  }
+
+  // Enhanced activity logging
   res.on("finish", () => {
-    logger.info({
-      event: "REQUEST",
+    const duration = Date.now() - start;
+    const logData = {
+      event: "USER_ACTIVITY",
       id,
+      timestamp,
       method: req.method,
       path: req.originalUrl,
+      endpoint: req.route?.path || req.path,
       statusCode: res.statusCode,
-      durationMs: Date.now() - start,
+      durationMs: duration,
       ip: req.ip,
-      ua: req.headers["user-agent"],
-    });
+      userAgent: req.headers["user-agent"],
+      contentType: req.headers["content-type"],
+      contentLength: req.headers["content-length"],
+      success: res.statusCode < 400,
+      ...(userInfo && { user: userInfo }),
+      // Activity categorization
+      category: getActivityCategory(req.method, req.originalUrl),
+      // Additional context
+      isHealthCheck: req.originalUrl === '/health' || req.originalUrl === '/',
+      isApiCall: req.originalUrl.startsWith('/api/'),
+      environment: process.env.NODE_ENV || 'production'
+    };
+
+    // Use appropriate log level based on status and importance
+    if (res.statusCode >= 500) {
+      logger.error(logData, `SERVER ERROR: ${req.method} ${req.originalUrl}`);
+    } else if (res.statusCode >= 400) {
+      logger.warn(logData, `CLIENT ERROR: ${req.method} ${req.originalUrl}`);
+    } else if (userInfo) {
+      logger.info(logData, `USER ACTIVITY: ${req.method} ${req.originalUrl} by ${userInfo.phone || userInfo.userId}`);
+    } else {
+      logger.info(logData, `API CALL: ${req.method} ${req.originalUrl}`);
+    }
   });
 
   next();
 });
 
+// Helper function to categorize activities
+function getActivityCategory(method, path) {
+  if (path === '/health' || path === '/') return 'HEALTH_CHECK';
+  if (path.includes('/auth/')) return 'AUTHENTICATION';
+  if (path.includes('/user/')) return 'USER_MANAGEMENT';
+  if (path.includes('/booking/')) return 'BOOKING';
+  if (path.includes('/subscription/')) return 'SUBSCRIPTION';
+  if (path.includes('/notification/')) return 'NOTIFICATION';
+  if (path.includes('/external/')) return 'EXTERNAL_INTEGRATION';
+  if (method === 'POST') return 'DATA_CREATION';
+  if (method === 'PUT' || method === 'PATCH') return 'DATA_UPDATE';
+  if (method === 'DELETE') return 'DATA_DELETION';
+  return 'DATA_RETRIEVAL';
+}
+
 // ─────────────────────────────────────────────
 // 🧩 Express v5 compatibility shim
 // ─────────────────────────────────────────────
 // Some third-party middleware (or older code) may still try to assign to `req.query`.
-// In Express v5, `req.query` is implemented as a getter-only property which makes such
 // assignments throw and can break health checks (e.g. Render's `HEAD /` probe).
 app.use((req, _res, next) => {
   try {

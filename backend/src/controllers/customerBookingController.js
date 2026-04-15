@@ -5,6 +5,7 @@ import { findBestVendor } from "../utils/vendorMatcherFixed.js";
 import { sendNotification } from "../utils/sendNotification.js";
 import Vendor from "../models/vendorModel.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import logger from "../utils/logger.js";
 
 /* ------------------------------------------------------------
    📝 CREATE BOOKING & NOTIFY VENDOR BACKEND
@@ -57,7 +58,7 @@ export const createCustomerBooking = asyncHandler(async (req, res) => {
     status: "pending"
   });
 
-  console.log(`✅ BOOKING_CREATED | ID: ${newBooking.booking_id}`);
+  logger.info(`✅ BOOKING_CREATED | ID: ${newBooking.booking_id}`);
 
   // FIRE-AND-FORGET: External Vendor Notifications
   const externalVendorUrl = process.env.EXTERNAL_VENDOR_URL || 'https://convenz-vendor-dor.vercel.app/api/external/orders';
@@ -250,6 +251,9 @@ export const mockAssignVendor = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: `Cannot assign vendor for status: ${booking.status}` });
   }
 
+  // Ensure mock vendor exists in database
+  await ensureMockVendorExists();
+
   // Assign a deterministic mock vendor and mark accepted.
   booking.vendorId = 9999;
   booking.status = "accepted";
@@ -266,12 +270,68 @@ export const mockAssignVendor = asyncHandler(async (req, res) => {
   };
   await booking.save();
 
+  logger.info(`MOCK_VENDOR_ASSIGNED | Booking: ${bookingId} | User: ${userId} | Vendor: Mock Vendor | Status: accepted`);
+
+  // Get customer details for notification
+  const customer = await User.findOne({ user_id: userId });
+  
+  // Send notification to customer (same as real vendor acceptance)
+  if (customer?.fcmToken) {
+    sendNotification(
+      customer.fcmToken,
+      "✅ Booking Accepted!",
+      `Your ${booking.selectedService} request was accepted by Mock Vendor. Open app to view your OTP.`,
+      { type: "BOOKING_STATUS_UPDATE", bookingId, status: "accepted" }
+    )
+      .then(() => logger.info(`MOCK_VENDOR_ASSIGNMENT_NOTIFICATION_SENT | User: ${userId} | Booking: ${bookingId}`))
+      .catch((err) => logger.error(`MOCK_VENDOR_ASSIGNMENT_NOTIFICATION_FAILED | User: ${userId} | Booking: ${bookingId} | Error: ${err.message}`));
+  } else {
+    logger.warn(`NO_FCM_TOKEN_FOR_MOCK_ASSIGNMENT | User: ${userId} | Booking: ${bookingId}`);
+  }
+
   return res.status(200).json({
     success: true,
     message: "Mock vendor assigned",
     data: booking,
   });
 });
+
+/* ------------------------------------------------------------
+   🧪 ENSURE MOCK VENDOR EXISTS IN DATABASE
+------------------------------------------------------------ */
+async function ensureMockVendorExists() {
+  try {
+    const existingVendor = await Vendor.findOne({ vendor_id: 9999 });
+    if (existingVendor) {
+      logger.info(`MOCK_VENDOR_ALREADY_EXISTS | Vendor: 9999`);
+      return;
+    }
+
+    // Create mock vendor if doesn't exist
+    const mockVendor = await Vendor.create({
+      vendor_id: 9999,
+      name: "Mock Vendor",
+      phone: 9999999999,
+      email: "mockvendor@convenz.test",
+      address: "Mock Vendor Address, Test City",
+      location: {
+        type: "Point",
+        coordinates: [0, 0], // Default coordinates
+      },
+      selectedServices: ["General Cleaning", "Deep Cleaning", "Office Cleaning"],
+      fcmTokens: [],
+      rating: 4.5,
+      totalBookings: 0,
+      completedBookings: 0,
+      totalRating: 0,
+      isOnline: true,
+    });
+
+    logger.info(`MOCK_VENDOR_CREATED | Vendor: 9999 | Name: Mock Vendor | ID: ${mockVendor._id}`);
+  } catch (error) {
+    logger.error(`MOCK_VENDOR_CREATION_FAILED | Error: ${error.message}`);
+  }
+}
 
 /* ------------------------------------------------------------
    🧪 MOCK: PROGRESS BOOKING STATUS (Customer-only, for QA)
@@ -358,7 +418,7 @@ export const verifyJobOtp = asyncHandler(async (req, res) => {
   booking.status = "enroute"; // If enroute, it stays enroute but verified
   await booking.save();
 
-  console.log(`✅ JOB_STARTED | Booking: ${booking.booking_id} | Customer: ${userId}`);
+  logger.info(`✅ JOB_STARTED | Booking: ${booking.booking_id} | Customer: ${userId}`);
 
   return res.status(200).json({
     success: true,
@@ -413,7 +473,7 @@ export const submitReview = asyncHandler(async (req, res) => {
       vendor.totalRating = (vendor.totalRating || 0) + rating;
       vendor.rating = parseFloat((vendor.totalRating / vendor.completedBookings).toFixed(2));
       await vendor.save();
-      console.log(`⭐ VENDOR_RATING_UPDATED | Vendor: ${vendor.vendor_id} | New Rating: ${vendor.rating}`);
+      logger.info(`⭐ VENDOR_RATING_UPDATED | Vendor: ${vendor.vendor_id} | New Rating: ${vendor.rating}`);
     }
   }
 

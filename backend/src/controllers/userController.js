@@ -20,10 +20,14 @@ const hashOtp = (otp) =>
 ------------------------------------------------------------ */
 export const registerUser = asyncHandler(async (req, res) => {
   const { phone, fcmToken } = req.body;
+  const startTime = Date.now();
+  const maskedPhone = String(phone).replace(/(\d{2})\d+(\d{2})/, '$1****$2');
   
   // Generate secure random 4-digit OTP
   const otp = crypto.randomInt(1000, 10000);
   const otpExpiryTime = new Date(Date.now() + 5 * 60000); // 5 mins in future
+  
+  logger.info(`OTP_REQUEST_INITIATED | Phone: ${maskedPhone} | FCM: ${fcmToken ? 'YES' : 'NO'}`);
   
   // +otp +otpExpiry +otpAttempts needed because those fields have select:false in the schema
   let user = await User.findOne({ phone }).select('+otp +otpExpiry +otpAttempts');
@@ -32,24 +36,32 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   if (!user) {
     user = await User.create({ phone, fcmToken, otp: hashedOtp, otpExpiry: otpExpiryTime });
+    logger.info(`NEW_USER_CREATED | User: ${user.user_id} | Phone: ${maskedPhone} | OTP: ${otp}`);
   } else {
+    const previousAttempts = user.otpAttempts || 0;
     user.otp = hashedOtp;
     user.otpExpiry = otpExpiryTime;
     user.otpAttempts = 0; // Reset attempts on new OTP request
     if (fcmToken && fcmToken !== user.fcmToken) {
       user.fcmToken = fcmToken;
+      logger.info(`FCM_TOKEN_UPDATED | User: ${user.user_id} | New Token: ${fcmToken.substring(0, 10)}...`);
     }
     await user.save();
+    logger.info(`EXISTING_USER_OTP_RESENT | User: ${user.user_id} | Phone: ${maskedPhone} | OTP: ${otp} | Previous Attempts: ${previousAttempts}`);
   }
 
-  const maskedPhone = String(phone).replace(/(\d{2})\d+(\d{2})/, '$1****$2');
-  logger.info(`✅ OTP_GENERATED | User: ${user.user_id} | Phone: ${maskedPhone}`);
-  
   // Send push notification with OTP (Fail-safe)
   const tokenToUse = fcmToken || user.fcmToken;
   if (tokenToUse) {
-    sendOtpNotification(tokenToUse, otp, user.user_id).catch(() => {});
+    sendOtpNotification(tokenToUse, otp, user.user_id)
+      .then(() => logger.info(`OTP_NOTIFICATION_SENT | User: ${user.user_id} | Phone: ${maskedPhone}`))
+      .catch((err) => logger.error(`OTP_NOTIFICATION_FAILED | User: ${user.user_id} | Phone: ${maskedPhone} | Error: ${err.message}`));
+  } else {
+    logger.warn(`NO_FCM_TOKEN_AVAILABLE | User: ${user.user_id} | Phone: ${maskedPhone}`);
   }
+
+  const processingTime = Date.now() - startTime;
+  logger.info(`OTP_GENERATION_SUCCESS | User: ${user.user_id} | Phone: ${maskedPhone} | ProcessingTime: ${processingTime}ms | IsNewUser: ${!user.name && !user.gender}`);
 
   return res.status(200).json({
     success: true,
@@ -64,15 +76,22 @@ export const registerUser = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const verifyOtp = asyncHandler(async (req, res) => {
   const { phone, otp } = req.body;
+  const startTime = Date.now();
+  const maskedPhone = String(phone).replace(/(\d{2})\d+(\d{2})/, '$1****$2');
+  
+  logger.info(`OTP_VERIFICATION_ATTEMPT | Phone: ${maskedPhone} | OTP: ${otp}`);
+  
   // +otp +otpExpiry +otpAttempts needed because those fields have select:false in the schema
   const user = await User.findOne({ phone }).select('+otp +otpExpiry +otpAttempts');
 
   if (!user) {
+    logger.error(`OTP_VERIFICATION_FAILED | Phone: ${maskedPhone} | Reason: USER_NOT_FOUND`);
     res.status(404);
     throw new Error("User not found");
   }
 
   if (!user.otp || !user.otpExpiry) {
+    logger.error(`OTP_VERIFICATION_FAILED | User: ${user.user_id} | Phone: ${maskedPhone} | Reason: OTP_NOT_REQUESTED`);
     res.status(400);
     throw new Error("OTP not requested or expired");
   }
@@ -82,11 +101,13 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     user.otpExpiry = null;
     user.otpAttempts = 0;
     await user.save();
+    logger.error(`OTP_VERIFICATION_FAILED | User: ${user.user_id} | Phone: ${maskedPhone} | Reason: OTP_EXPIRED`);
     res.status(400);
     throw new Error("OTP expired");
   }
 
   if (user.otpAttempts >= 5) {
+    logger.error(`OTP_VERIFICATION_BLOCKED | User: ${user.user_id} | Phone: ${maskedPhone} | Attempts: ${user.otpAttempts} | Reason: MAX_ATTEMPTS_REACHED`);
     res.status(429);
     throw new Error("Too many OTP attempts. Please request a new OTP.");
   }
@@ -94,6 +115,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   if (hashOtp(otp) !== user.otp) {
     user.otpAttempts += 1;
     await user.save();
+    logger.error(`OTP_VERIFICATION_FAILED | User: ${user.user_id} | Phone: ${maskedPhone} | ProvidedOTP: ${otp} | Attempt: ${user.otpAttempts} | Reason: INVALID_OTP`);
     res.status(400);
     throw new Error("Invalid OTP");
   }
@@ -107,12 +129,21 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   const token = generateToken(String(user.user_id), user.tokenVersion);
   const isNewUser = !user.name && !user.gender;
 
+  logger.info(`OTP_VERIFICATION_SUCCESS | User: ${user.user_id} | Phone: ${maskedPhone} | IsNewUser: ${isNewUser} | TokenGenerated: YES`);
+
   // Welcome notification (Non-blocking)
   if (user.fcmToken) {
-    const title = isNewUser ? "✅ Verification Successful!" : "🎉 Welcome Back!";
+    const title = isNewUser ? "Verification Successful!" : "Welcome Back!";
     const body = isNewUser ? "Welcome! Please complete your profile." : `Hello ${user.name || 'User'}, you're successfully logged in.`;
-    sendNotification(user.fcmToken, title, body, { type: isNewUser ? 'welcome' : 'login' }).catch(() => {});
+    sendNotification(user.fcmToken, title, body, { type: isNewUser ? 'welcome' : 'login' })
+      .then(() => logger.info(`WELCOME_NOTIFICATION_SENT | User: ${user.user_id} | Type: ${isNewUser ? 'NEW_USER' : 'RETURNING_USER'}`))
+      .catch((err) => logger.error(`WELCOME_NOTIFICATION_FAILED | User: ${user.user_id} | Error: ${err.message}`));
+  } else {
+    logger.warn(`NO_FCM_TOKEN_FOR_LOGIN | User: ${user.user_id} | Phone: ${maskedPhone}`);
   }
+
+  const processingTime = Date.now() - startTime;
+  logger.info(`USER_LOGIN_SUCCESS | User: ${user.user_id} | Phone: ${maskedPhone} | Name: ${user.name || 'NOT_SET'} | ProcessingTime: ${processingTime}ms`);
 
   return res.status(200).json({
     success: true,
@@ -135,21 +166,40 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 export const updateUserDetails = asyncHandler(async (req, res) => {
   const userId = req.user.user_id; // Secure from JWT
   const { name, gender } = req.body;
+  const startTime = Date.now();
+  
+  logger.info(`PROFILE_UPDATE_ATTEMPT | User: ${userId} | Name: ${name || 'UNCHANGED'} | Gender: ${gender || 'UNCHANGED'}`);
   
   const user = await User.findOne({ user_id: userId });
   if (!user) {
+    logger.error(`PROFILE_UPDATE_FAILED | User: ${userId} | Reason: USER_NOT_FOUND`);
     res.status(404);
     throw new Error("User not found");
   }
 
+  const previousName = user.name;
+  const previousGender = user.gender;
+  
   user.name = name || user.name;
   user.gender = gender || user.gender;
   await user.save();
 
+  const nameChanged = previousName !== user.name;
+  const genderChanged = previousGender !== user.gender;
+  
+  logger.info(`PROFILE_UPDATE_SUCCESS | User: ${userId} | NameChanged: ${nameChanged} | GenderChanged: ${genderChanged} | NewName: ${user.name} | NewGender: ${user.gender}`);
+
   // Profile update notification
   if (user.fcmToken) {
-    sendNotification(user.fcmToken, "✅ Profile Updated!", "Your profile details have been saved.", { type: "profile_update" }).catch(() => {});
+    sendNotification(user.fcmToken, "Profile Updated!", "Your profile details have been saved.", { type: "profile_update" })
+      .then(() => logger.info(`PROFILE_UPDATE_NOTIFICATION_SENT | User: ${userId}`))
+      .catch((err) => logger.error(`PROFILE_UPDATE_NOTIFICATION_FAILED | User: ${userId} | Error: ${err.message}`));
+  } else {
+    logger.warn(`NO_FCM_TOKEN_FOR_PROFILE_UPDATE | User: ${userId}`);
   }
+
+  const processingTime = Date.now() - startTime;
+  logger.info(`USER_PROFILE_UPDATE_COMPLETE | User: ${userId} | ProcessingTime: ${processingTime}ms`);
 
   return res.status(200).json({
     success: true,
@@ -209,14 +259,21 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 export const updateUserLocation = asyncHandler(async (req, res) => {
   const { latitude, longitude, address: providedAddress } = req.body;
   const userId = req.user.user_id;
+  const startTime = Date.now();
+  
+  logger.info(`LOCATION_UPDATE_ATTEMPT | User: ${userId} | Lat: ${latitude} | Lng: ${longitude} | ProvidedAddress: ${providedAddress || 'NO'}`);
 
   const user = await User.findOne({ user_id: userId });
   if (!user) {
+    logger.error(`LOCATION_UPDATE_FAILED | User: ${userId} | Reason: USER_NOT_FOUND`);
     res.status(404);
     throw new Error("User not found");
   }
 
+  const previousAddress = user.address;
+  const previousLocation = user.location;
   let address = providedAddress || "Address not found";
+  let geocodingSuccess = false;
   
   // Geocode if address not provided by client
   if (!providedAddress && latitude && longitude) {
@@ -226,10 +283,17 @@ export const updateUserLocation = asyncHandler(async (req, res) => {
       const response = await axios.get(geoUrl);
       if (response.data.results.length > 0) {
         address = response.data.results[0].formatted;
+        geocodingSuccess = true;
+        logger.info(`GEOCODING_SUCCESS | User: ${userId} | Lat: ${latitude} | Lng: ${longitude} | Address: ${address}`);
+      } else {
+        logger.warn(`GEOCODING_NO_RESULTS | User: ${userId} | Lat: ${latitude} | Lng: ${longitude}`);
       }
-    } catch {
-      logger.warn("⚠️ Geocoding failed, using coordinates only.");
+    } catch (err) {
+      logger.error(`GEOCODING_FAILED | User: ${userId} | Lat: ${latitude} | Lng: ${longitude} | Error: ${err.message}`);
     }
+  } else if (providedAddress) {
+    geocodingSuccess = true;
+    logger.info(`CLIENT_ADDRESS_PROVIDED | User: ${userId} | Address: ${providedAddress}`);
   }
 
   user.location = { type: "Point", coordinates: [longitude, latitude] };
@@ -237,10 +301,22 @@ export const updateUserLocation = asyncHandler(async (req, res) => {
   user.isOnline = true;
   await user.save();
 
+  const locationChanged = JSON.stringify(previousLocation) !== JSON.stringify(user.location);
+  const addressChanged = previousAddress !== user.address;
+  
+  logger.info(`LOCATION_UPDATE_SUCCESS | User: ${userId} | LocationChanged: ${locationChanged} | AddressChanged: ${addressChanged} | NewAddress: ${address} | GeocodingSuccess: ${geocodingSuccess}`);
+
   // Location notification
   if (user.fcmToken) {
-    sendNotification(user.fcmToken, "📍 Location Updated", `New location: ${address}`, { type: "location_update" }).catch(() => {});
+    sendNotification(user.fcmToken, "Location Updated", `New location: ${address}`, { type: "location_update" })
+      .then(() => logger.info(`LOCATION_UPDATE_NOTIFICATION_SENT | User: ${userId} | Address: ${address}`))
+      .catch((err) => logger.error(`LOCATION_UPDATE_NOTIFICATION_FAILED | User: ${userId} | Error: ${err.message}`));
+  } else {
+    logger.warn(`NO_FCM_TOKEN_FOR_LOCATION_UPDATE | User: ${userId}`);
   }
+
+  const processingTime = Date.now() - startTime;
+  logger.info(`USER_LOCATION_UPDATE_COMPLETE | User: ${userId} | ProcessingTime: ${processingTime}ms | OnlineStatus: ${user.isOnline}`);
 
   return res.status(200).json({
     success: true,
