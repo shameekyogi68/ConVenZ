@@ -123,8 +123,8 @@ router.post("/booking/:bookingId/cancel", protect, checkUserBlocked, cancelBooki
 router.post("/user/booking/:bookingId/cancel", protect, checkUserBlocked, cancelBooking); // Alias
 
 // Verify Job Start OTP (Ensures vendor is present) - BLOCKER 3
-router.post("/booking/:bookingId/verify-otp", protect, checkUserBlocked, verifyJobOtp);
-router.post("/user/booking/:bookingId/verify-otp", protect, checkUserBlocked, verifyJobOtp); // Alias
+router.post("/booking/:bookingId/verify-otp", protect, validate(bookingSchemas.verifyOtp), checkUserBlocked, verifyJobOtp);
+router.post("/user/booking/:bookingId/verify-otp", protect, validate(bookingSchemas.verifyOtp), checkUserBlocked, verifyJobOtp); // Alias
 
 // Rate Vendor (Review)
 router.post("/booking/:bookingId/review", protect, validate(bookingSchemas.review), checkUserBlocked, submitReview);
@@ -138,8 +138,8 @@ router.get("/user/booking/:bookingId", protect, getBookingDetails); // Alias
 router.post("/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor);
 router.post("/user/booking/:bookingId/mock-assign-vendor", protect, mockAssignVendor); // Alias
 
-router.post("/booking/:bookingId/mock-progress", protect, mockProgressBooking);
-router.post("/user/booking/:bookingId/mock-progress", protect, mockProgressBooking); // Alias
+router.post("/booking/:bookingId/mock-progress", protect, validate(bookingSchemas.mockProgress), mockProgressBooking);
+router.post("/user/booking/:bookingId/mock-progress", protect, validate(bookingSchemas.mockProgress), mockProgressBooking); // Alias
 
 /* ------------------------------------------
    🔒 ADMIN ROUTES - User Blocking (PROTECTED)

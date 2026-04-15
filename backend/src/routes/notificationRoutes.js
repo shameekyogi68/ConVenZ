@@ -5,6 +5,8 @@ import {
   sendNotificationToMultipleUsers,
   sendNotificationToTopic
 } from "../controllers/notificationController.js";
+import { protect } from "../middlewares/authMiddleware.js";
+import { validate, notificationSchemas } from "../middlewares/validateMiddleware.js";
 
 const router = express.Router();
 
@@ -25,8 +27,8 @@ const adminProtect = (req, res, next) => {
    🔔 NOTIFICATION ROUTES
 ------------------------------------------- */
 
-// Update FCM token for a user
-router.post("/update-token", updateFcmToken);
+// Update FCM token for authenticated user
+router.post("/update-token", protect, validate(notificationSchemas.updateFcmToken), updateFcmToken);
 
 // Send notification to a single user
 router.post("/send", adminProtect, sendNotificationToUser);

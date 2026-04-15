@@ -37,6 +37,8 @@ class SubscriptionService {
   /// Get user's current active subscription
   // ─────────────────────────────────────────────
   static Future<Map<String, dynamic>> getUserSubscription(String userId) async {
-    return ApiService.getUrl('$_base/user/$userId');
+    // `userId` kept for API compatibility at call sites; backend resolves
+    // identity from JWT and `/my` avoids param/token mismatch issues.
+    return ApiService.getUrl('$_base/my');
   }
 }

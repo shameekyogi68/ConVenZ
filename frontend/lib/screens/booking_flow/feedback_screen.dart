@@ -106,7 +106,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(5, (index) {
-                        final filled = index < _rating;
+                        final bool filled = index < _rating;
                         return GestureDetector(
                           onTap: () => setState(() => _rating = index + 1),
                           child: AnimatedSwitcher(

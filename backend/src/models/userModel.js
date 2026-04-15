@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
       type: Number,
       required: true,
       unique: true,
+      min: 1000000000,
+      max: 999999999999,
     },
     name: { type: String, trim: true, maxlength: 100 },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
@@ -20,7 +22,20 @@ const userSchema = new mongoose.Schema(
     // 📍 GeoJSON Location
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], default: [0, 0] }, // [longitude, latitude]
+      coordinates: {
+        type: [Number],
+        default: [0, 0],
+        validate: {
+          validator: (coords) => {
+            if (!Array.isArray(coords) || coords.length !== 2) {
+              return false;
+            }
+            const [lng, lat] = coords;
+            return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+          },
+          message: "Location coordinates must be [longitude, latitude] within valid range",
+        },
+      }, // [longitude, latitude]
     },
 
     // 🆕 Address (Reverse Geocoded)
@@ -95,6 +110,14 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ fcmToken: 1 }, { sparse: true });           // Sparse index: only indexes users with tokens, ignores nulls.
 userSchema.index({ isBlocked: 1, fcmToken: 1 });          // Optimized index for scheduler marketing pushes.
 userSchema.index({ location: "2dsphere" });  // High-performance geospatial search
+
+// Normalize potentially empty token payloads
+userSchema.pre("save", function normalizeUserFields(next) {
+  if (typeof this.fcmToken === "string" && this.fcmToken.trim() === "") {
+    this.fcmToken = null;
+  }
+  next();
+});
 
 // Auto-increment user_id ONLY for Users
 userSchema.plugin(AutoIncrement, {

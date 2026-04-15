@@ -3,7 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AppConstants {
   // 🌍 Production Ready API Configuration
   // Centralized URL, forcefully defaulting to the rendering backend for production build
-  static String get apiBaseUrl => dotenv.get('API_BASE_URL', fallback: 'https://convenz.onrender.com/api/v1');
+  static String get apiBaseUrl =>
+      dotenv.maybeGet('API_BASE_URL') ?? 'https://convenz.onrender.com/api/v1';
   
   // 🏁 API Sub-Paths (Relative to apiBaseUrl)
   // Ensure paths match exactly with backend/server.js mount points
@@ -18,5 +19,6 @@ class AppConstants {
   static String get subscriptionBaseUrl => '$apiBaseUrl$subscriptionApiPath';
   
   // 🔐 Security: HMAC-SHA256 Signing Secret
-  static String get apiSigningSecret => dotenv.get('API_SIGNING_SECRET', fallback: 'convenz_default_secret_key_2024_@!');
+  static String get apiSigningSecret =>
+      dotenv.maybeGet('API_SIGNING_SECRET') ?? 'convenz_default_secret_key_2024_@!';
 }

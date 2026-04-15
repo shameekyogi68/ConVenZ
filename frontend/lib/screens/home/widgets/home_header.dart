@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../config/app_colors.dart';
 import '../../../../providers/user_provider.dart';
 import '../../../../utils/shared_prefs.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
 
   String _greeting() {
     final int hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    if (hour < 12) {
+      return 'Good morning';
+    }
+    if (hour < 17) {
+      return 'Good afternoon';
+    }
     return 'Good evening';
   }
 

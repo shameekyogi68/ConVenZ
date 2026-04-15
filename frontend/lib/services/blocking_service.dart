@@ -7,7 +7,8 @@ class BlockingService {
   // ============================================
   // CHECK USER BLOCK STATUS
   // ============================================
-  // Endpoint: GET /api/user/admin/check-status/:userId
+  // Uses profile endpoint to detect blocked status via regular auth flow.
+  // This avoids calling admin-only endpoints from the customer app.
   static Future<Map<String, dynamic>> checkUserStatus() async {
     try {
       final String? userId = SharedPrefs.getUserId();
@@ -18,7 +19,7 @@ class BlockingService {
         };
       }
 
-      final Map<String, dynamic> response = await ApiService.get('/user/admin/check-status/$userId');
+      final Map<String, dynamic> response = await ApiService.get('/user/profile/$userId');
       
       // Response structure:
       // {
@@ -45,9 +46,11 @@ class BlockingService {
   // CHECK IF RESPONSE INDICATES BLOCKED USER
   // ============================================
   static bool isUserBlocked(Map<String, dynamic> response) {
+    final String message = (response['message'] as String?)?.toLowerCase() ?? '';
     final dynamic data = response['data'];
     return response['blocked'] == true || 
            response['statusCode'] == 403 ||
+           message.contains('blocked') ||
            (data is Map<String, dynamic> && data['isBlocked'] == true);
   }
 

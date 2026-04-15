@@ -196,7 +196,8 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
 
   const validTransitions = {
     pending: ["accepted", "rejected", "cancelled"],
-    accepted: ["completed", "cancelled", "rejected"],
+    accepted: ["enroute", "completed", "cancelled", "rejected"],
+    enroute: ["completed", "cancelled"],
     completed: [],
     cancelled: [],
     rejected: []
@@ -207,6 +208,7 @@ export const updateBookingStatus = asyncHandler(async (req, res) => {
     throw new Error(`Invalid status transition from ${booking.status} to ${status}`);
   }
 
+  // @ts-ignore: String is not assignable to exact enum type
   booking.status = status;
   if (status === "accepted" && otpStart) booking.otpStart = otpStart;
   if (vendorId) booking.vendorId = vendorId;
@@ -307,6 +309,7 @@ export const mockProgressBooking = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: `Cannot move to completed from ${booking.status}` });
   }
 
+  // @ts-ignore: String is not assignable to exact enum type
   booking.status = next;
   await booking.save();
 
@@ -318,8 +321,14 @@ export const mockProgressBooking = asyncHandler(async (req, res) => {
    BLOCKER 3: Ensures vendor is physically present
 ------------------------------------------------------------ */
 export const verifyJobOtp = asyncHandler(async (req, res) => {
-  const { bookingId, otp } = req.body;
+  const bookingId = req.params.bookingId || req.body.bookingId;
+  const { otp } = req.body;
   const userId = req.user.user_id;
+
+  if (!bookingId) {
+    res.status(400);
+    throw new Error("bookingId is required");
+  }
 
   // Find booking and include otpStart (select: false in schema)
   const booking = await Booking.findOne({ booking_id: bookingId }).select("+otpStart");

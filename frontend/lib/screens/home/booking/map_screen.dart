@@ -13,7 +13,6 @@ import '../../../config/app_colors.dart';
 import '../../../widgets/primary_button.dart';
 
 class MapScreen extends StatefulWidget {
-  
   const MapScreen({super.key, this.selectedService});
   final String? selectedService;
 
@@ -83,7 +82,9 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _getCurrentLocation() async {
     final Position? pos = await _getPreciseLocation();
-    if (!mounted || pos == null) return;
+    if (!mounted || pos == null) {
+      return;
+    }
 
     final newCenter = LatLng(pos.latitude, pos.longitude);
     setState(() => _center = newCenter);
@@ -96,15 +97,38 @@ class _MapScreenState extends State<MapScreen> {
     if (query.isEmpty) {
       return;
     }
+    if (openCageKey.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location search is unavailable. Please select on map.')),
+      );
+      return;
+    }
     setState(() => _isSearching = true);
 
-    final url =
-        'https://api.opencagedata.com/geocode/v1/json?q=$query&key=$openCageKey';
+    final url = Uri.https('api.opencagedata.com', '/geocode/v1/json', {
+      'q': query,
+      'key': openCageKey,
+      'limit': '1',
+      'language': 'en',
+      'no_annotations': '1',
+    });
 
     try {
-      final http.Response res = await http.get(Uri.parse(url));
-      
-      if (!mounted) return;
+      final http.Response res = await http.get(url).timeout(const Duration(seconds: 8));
+
+      if (!mounted) {
+        return;
+      }
+
+      if (res.statusCode != 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to search location right now')),
+        );
+        return;
+      }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
 
@@ -114,7 +138,7 @@ class _MapScreenState extends State<MapScreen> {
         final geometry = firstResult['geometry'] as Map<String, dynamic>;
         final double lat = double.tryParse(geometry['lat'].toString()) ?? 0.0;
         final double lng = double.tryParse(geometry['lng'].toString()) ?? 0.0;
-        final LatLng newCenter = LatLng(lat, lng);
+        final newCenter = LatLng(lat, lng);
 
         _mapController.move(newCenter, 16);
         setState(() => _center = newCenter);
@@ -144,12 +168,35 @@ class _MapScreenState extends State<MapScreen> {
 
   /// 🌟 SMART Reverse Geocode – Extracts landmarks, building, hospital, shop names
   Future<void> _reverseGeocode(LatLng position) async {
-    final url =
-        'https://api.opencagedata.com/geocode/v1/json?q=${position.latitude}+${position.longitude}&key=$openCageKey';
+    if (openCageKey.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      final fallback =
+          '${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)}';
+      setState(() {
+        _selectedAddress = fallback;
+        addressController.text = fallback;
+      });
+      return;
+    }
+
+    final url = Uri.https('api.opencagedata.com', '/geocode/v1/json', {
+      'q': '${position.latitude},${position.longitude}',
+      'key': openCageKey,
+      'limit': '1',
+      'language': 'en',
+      'no_annotations': '1',
+    });
 
     try {
-      final http.Response res = await http.get(Uri.parse(url));
-      if (!mounted) return;
+      final http.Response res = await http.get(url).timeout(const Duration(seconds: 8));
+      if (!mounted) {
+        return;
+      }
+      if (res.statusCode != 200) {
+        return;
+      }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
 
       final results = data['results'] as List<dynamic>;
@@ -281,52 +328,52 @@ class _MapScreenState extends State<MapScreen> {
 
   /// 📍 UI Extracted — unchanged
   Widget _buildSearchBar() => Row(
-    children: [
-      Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryTeal, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))
-            ],
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.primaryTeal, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-    child: TextField(
-      controller: _searchController,
-      textInputAction: TextInputAction.search,
-      onSubmitted: _searchLocation,
-      decoration: InputDecoration(
-        hintText: 'Search city, area...',
-        border: InputBorder.none,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        suffixIcon: IconButton(
-          icon: _isSearching
-              ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-              : const Icon(Icons.search, color: AppColors.primaryTeal),
-          onPressed: () => _searchLocation(_searchController.text),
-        ),
-      ),
-    ),
-        ),
-      ),
-    ],
-  );
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: AppColors.primaryTeal.withOpacity(0.1), blurRadius: 12, offset: const Offset(0, 4))
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: _searchLocation,
+                decoration: InputDecoration(
+                  hintText: 'Search city, area...',
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  suffixIcon: IconButton(
+                    icon: _isSearching
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.search, color: AppColors.primaryTeal),
+                    onPressed: () => _searchLocation(_searchController.text),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
 
   Widget _buildBottomAddressPanel() => Align(
     alignment: Alignment.bottomCenter,

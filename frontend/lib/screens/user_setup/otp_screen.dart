@@ -194,9 +194,9 @@ class _OtpScreenState extends State<OtpScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Text(
+                    const Text(
                       'Check your notifications for the OTP',
-                      style: const TextStyle(fontSize: 16, color: AppColors.darkGrey),
+                      style: TextStyle(fontSize: 16, color: AppColors.darkGrey),
                     ),
                     const SizedBox(height: 40),
                     Row(
@@ -216,30 +216,35 @@ class _OtpScreenState extends State<OtpScreen> {
                     const SizedBox(height: 32),
 
                     // Resend row
-                    if (_isResending) const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primaryTeal,
-                            ),
-                          ) else _resendCountdown > 0
-                            ? Text(
-                                'Resend OTP in ${_resendCountdown}s',
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey.shade500),
-                              )
-                            : TextButton(
-                                onPressed: _resendOtp,
-                                child: const Text(
-                                  'Resend OTP',
-                                  style: TextStyle(
-                                    color: AppColors.primaryTeal,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
+                    if (_isResending)
+                      const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primaryTeal,
+                        ),
+                      )
+                    else if (_resendCountdown > 0)
+                      Text(
+                        'Resend OTP in ${_resendCountdown}s',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade500,
+                        ),
+                      )
+                    else
+                      TextButton(
+                        onPressed: _resendOtp,
+                        child: const Text(
+                          'Resend OTP',
+                          style: TextStyle(
+                            color: AppColors.primaryTeal,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
 
                     const SizedBox(height: 24),
                     PrimaryButton(

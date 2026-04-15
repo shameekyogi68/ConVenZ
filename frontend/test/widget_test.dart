@@ -7,14 +7,29 @@
 
 import 'package:convenz_customer_app/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('App loads successfully', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    TestWidgetsFlutterBinding.ensureInitialized();
+    dotenv.testLoad(
+      fileInput: 'API_BASE_URL=https://convenz.onrender.com/api/v1\n',
+    );
 
-    // Verify that the app initializes
+    // Build our app and trigger a frame.
+    //
+    // IMPORTANT: This app uses tall, scroll-less onboarding layouts which can
+    // overflow the default test viewport. For this smoke test, we only verify
+    // that the widget tree builds without throwing.
+    await tester.pumpWidget(const MyApp());
+    await tester.pump();
+
+    // If the app builds, MaterialApp.router should exist.
     expect(find.byType(MaterialApp), findsOneWidget);
+
+    // Dispose to avoid pending animation timers (splash/onboarding).
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
   });
 }

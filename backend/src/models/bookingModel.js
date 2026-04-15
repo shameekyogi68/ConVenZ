@@ -58,7 +58,20 @@ const bookingSchema = new mongoose.Schema(
     // Booking location
     location: {
       type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], required: true }, // [longitude, latitude]
+      coordinates: {
+        type: [Number],
+        required: true,
+        validate: {
+          validator: (coords) => {
+            if (!Array.isArray(coords) || coords.length !== 2) {
+              return false;
+            }
+            const [lng, lat] = coords;
+            return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+          },
+          message: "Location coordinates must be [longitude, latitude] within valid range",
+        },
+      }, // [longitude, latitude]
       address: { type: String, required: true, trim: true, maxlength: 500 },
     },
 
@@ -123,6 +136,8 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.index({ userId: 1, status: 1 }); // Essential for "My Bookings" dashboard performance
 bookingSchema.index({ vendorId: 1, status: 1 }); // Essential for Vendor's "My Jobs" performance
 bookingSchema.index({ booking_id: 1 }, { unique: true }); // Fast ID-based lookup with DB-level uniqueness enforcement
+bookingSchema.index({ userId: 1, createdAt: -1 }); // Optimized for recent booking history queries
+bookingSchema.index({ userId: 1, status: 1, createdAt: -1 }); // Optimized for active-booking lookup + recency
 
 // 🛡️ Data Archival (MongoDB Partial TTL Index)
 // Deletes completed or cancelled bookings exactly 1 year (31536000 seconds) after their last update
@@ -135,6 +150,17 @@ bookingSchema.index(
 bookingSchema.plugin(AutoIncrement, {
   id: "booking_seq",
   inc_field: "booking_id",
+});
+
+// Keep status-related fields consistent at DB layer.
+bookingSchema.pre("save", function normalizeBookingFields(next) {
+  if (this.status !== "rejected") {
+    this.rejectionReason = null;
+  }
+  if (this.status === "rejected" && !this.rejectionReason) {
+    this.rejectionReason = "Rejected by vendor";
+  }
+  next();
 });
 
 /** @type {import('./types.js').BookingModel} */

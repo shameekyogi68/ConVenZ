@@ -35,6 +35,15 @@ subscriptionSchema.index(
 ); // DB-level enforcement: a user can only have ONE "Active" subscription at any time.
 subscriptionSchema.index({ expiryDate: 1 }); // Standalone index for global expiry cleanup jobs
 
+subscriptionSchema.path("expiryDate").validate(function validateExpiryDate(value) {
+  if (!value) {
+    return false;
+  }
+  // startDate may be defaulted at save-time; fallback to now.
+  const start = this.startDate || new Date();
+  return value.getTime() > new Date(start).getTime();
+}, "expiryDate must be later than startDate");
+
 /** @type {import('./types.js').SubscriptionModel} */
 const Subscription = /** @type {any} */ (mongoose.model("Subscription", subscriptionSchema));
 

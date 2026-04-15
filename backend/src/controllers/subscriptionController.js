@@ -32,7 +32,16 @@ export const createPlan = asyncHandler(async (req, res) => {
 ------------------------------------------------------------ */
 export const getActivePlans = asyncHandler(async (req, res) => {
   const filter = { active: true };
-  if (req.query.planType) filter.planType = req.query.planType;
+  if (req.query.planType) {
+    const planType = String(req.query.planType).toLowerCase();
+    if (!["customer", "vendor", "admin"].includes(planType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid planType. Use customer, vendor, or admin.",
+      });
+    }
+    filter.planType = planType;
+  }
   const plans = await Plan.find(filter).sort({ price: 1 });
   res.status(200).json({ success: true, count: plans.length, data: plans });
 });

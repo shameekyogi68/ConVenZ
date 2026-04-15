@@ -89,6 +89,12 @@ export const bookingSchemas = {
     rating: Joi.number().min(1).max(5).required(),
     reviewText: Joi.string().max(1000).optional().allow('')
   }),
+  verifyOtp: Joi.object({
+    otp: Joi.number().integer().min(1000).max(9999).required(),
+  }),
+  mockProgress: Joi.object({
+    status: Joi.string().valid("enroute", "completed").required(),
+  }),
 };
 
 /**
