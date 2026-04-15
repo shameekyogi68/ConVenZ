@@ -57,10 +57,14 @@ class ApiService {
           
           var bodyString = '';
           if (options.data != null) {
-            if (options.data is Map || options.data is List) {
-              bodyString = jsonEncode(options.data);
+            if (options.data is Map && (options.data as Map).isEmpty) {
+              options.data = null;
+              bodyString = '';
+            } else if (options.data is List && (options.data as List).isEmpty) {
+              options.data = null;
+              bodyString = '';
             } else {
-              bodyString = options.data.toString();
+              bodyString = jsonEncode(options.data);
             }
           }
           
