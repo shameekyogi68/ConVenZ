@@ -30,6 +30,7 @@ import {
 } from "../middlewares/checkBlocked.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { validate, authSchemas, userSchemas, bookingSchemas, notificationSchemas } from "../middlewares/validateMiddleware.js";
+import { idempotency } from "../middlewares/idempotencyMiddleware.js";
 
 // Stricter rate limit for auth endpoints — prevents OTP brute force
 const authLimiter = rateLimit({
@@ -99,7 +100,13 @@ const serverProtect = (req, res, next) => {
 };
 
 // Status update from vendor backend (Requires cross-server auth)
-router.post("/booking/status-update", serverProtect, validate(bookingSchemas.statusUpdate), updateBookingStatus);
+router.post(
+  "/booking/status-update",
+  serverProtect,
+  idempotency(),
+  validate(bookingSchemas.statusUpdate),
+  updateBookingStatus
+);
 
 // Create booking - MUST come before :bookingId route
 router.post("/booking/create", protect, validate(bookingSchemas.create), checkUserBlocked, createCustomerBooking);

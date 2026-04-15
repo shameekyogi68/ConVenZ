@@ -24,11 +24,10 @@ Goal: **fast, reliable, zero-ambiguity integration** for production.
 ### 2.1 Server-to-Server secret (required)
 Use a shared secret for all server-to-server calls (webhooks).
 
-- Customer backend stores: `VENDOR_SERVER_SECRET`
-- Vendor backend stores: `CUSTOMER_SERVER_SECRET`
+- Customer backend stores: `SERVER_SECRET` (Render env var)
+- Vendor backend stores: the same secret value (keep it private)
 
 **Headers**
-- Customer → Vendor: `x-customer-server-secret: <CUSTOMER_SERVER_SECRET>`
 - Vendor → Customer: `x-server-secret: <SERVER_SECRET>`
 
 > Never share JWT secrets, MongoDB URI, Firebase service account JSON, or admin secrets with the vendor team.
@@ -121,11 +120,11 @@ Notes:
 When a customer creates a booking, the Customer backend notifies Vendor backend for assignment.
 
 **Endpoint (Vendor backend)**
-- `POST /jobs/create`  _(vendor must implement)_
+- Vendor must expose an endpoint (recommended): `POST /jobs/create`
 
 **Headers**
 - `Content-Type: application/json`
-- `x-customer-server-secret: <CUSTOMER_SERVER_SECRET>`
+- `x-customer-server-secret: <CUSTOMER_SERVER_SECRET>` _(recommended; vendor can choose exact header name)_
 - `x-idempotency-key: <uuid>` (recommended)
 
 **Body (minimum recommended)**
@@ -194,6 +193,9 @@ Both systems should support **idempotency keys**:
 - Server stores the key + response for a short TTL (e.g., 5 minutes)
 - If same key is received again, return the same response without re-processing.
 
+Customer backend already supports idempotency replay for:
+- `POST /api/v1/user/booking/status-update` (via `x-idempotency-key`, 5 minute TTL)
+
 This is critical because retries are expected in production.
 
 ---
@@ -219,7 +221,7 @@ Vendor should log for every webhook call:
 ## 9) Required items vendor must deliver
 
 1) **Vendor backend base URL**
-2) `CUSTOMER_SERVER_SECRET` value (shared securely once)
+2) Agreement on a shared server secret (Customer uses `SERVER_SECRET`)
 3) Implement vendor endpoint:
    - `POST /jobs/create`
 4) Implement outbound webhook to customer:
