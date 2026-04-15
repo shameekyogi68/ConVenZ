@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../firebase_options.dart';
 import '../core/router/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/shared_prefs.dart';
 import 'api_service.dart';
 
@@ -374,7 +375,7 @@ class NotificationService {
         return;
       }
 
-      final response = await ApiService.post('/fcm/update-token', {'fcmToken': token});
+      final Map<String, dynamic> response = await ApiService.post('/fcm/update-token', {'fcmToken': token});
       if (response['success'] == true) {
         AppLogger.d('FCM token saved to backend successfully');
       } else {

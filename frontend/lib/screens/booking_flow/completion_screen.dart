@@ -3,8 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
-import '../../widgets/primary_button.dart';
 import '../../services/booking_service.dart';
+import '../../widgets/primary_button.dart';
 
 class CompletionScreen extends StatefulWidget {
   const CompletionScreen({super.key, required this.booking});
@@ -78,10 +78,10 @@ class _CompletionScreenState extends State<CompletionScreen> {
 
               const SizedBox(height: 48),
 
-              Text(
+              const Text(
                 'Service Complete!',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primaryTeal,
@@ -112,13 +112,13 @@ class _CompletionScreenState extends State<CompletionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Rate Your Experience',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'How was your service with ${widget.booking.vendorName ?? 'Mock Vendor'}?',
+                      'How was your service with ${widget.booking.vendorName}?',
                       style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 16),
@@ -210,8 +210,8 @@ class _CompletionScreenState extends State<CompletionScreen> {
     });
 
     try {
-      final result = await BookingService.submitReview(
-        widget.booking.booking_id!,
+      final Map<String, dynamic> result = await BookingService.submitReview(
+        widget.booking.booking_id,
         _rating,
         _feedbackController.text.trim(),
       );
@@ -229,7 +229,7 @@ class _CompletionScreenState extends State<CompletionScreen> {
         }
       } else {
         setState(() {
-          _error = result['message'] ?? 'Failed to submit feedback. Please try again.';
+          _error = (result['message'] as String?) ?? 'Failed to submit feedback. Please try again.';
         });
       }
     } catch (e) {

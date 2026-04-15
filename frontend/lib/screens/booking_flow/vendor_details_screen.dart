@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
-import '../../services/booking_service.dart';
 
 class VendorDetailsScreen extends StatefulWidget {
   const VendorDetailsScreen({super.key, required this.booking});
@@ -100,12 +99,12 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
 
                   // Info card
                   _buildInfoCard([
-                    _InfoRow(icon: Icons.badge_outlined, label: 'Vendor Name', value: widget.booking.vendorName ?? 'Mock Vendor'),
+                    _InfoRow(icon: Icons.badge_outlined, label: 'Vendor Name', value: widget.booking.vendorName),
                     if (widget.booking.vendorPhone != null)
                       _InfoRow(icon: Icons.phone_android_rounded, label: 'Phone Number', value: widget.booking.vendorPhone!),
                     _InfoRow(icon: Icons.home_repair_service_outlined, label: 'Service Category', value: widget.booking.serviceName),
                     _InfoRow(icon: Icons.calendar_month_outlined, label: 'Scheduled On', value: '${widget.booking.date} at ${widget.booking.time}'),
-                    _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: widget.booking.location?.address ?? 'Loading...'),
+                    _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: (widget.booking.location?['address'] as String?) ?? 'Loading...'),
                   ]).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
                   const SizedBox(height: 32),

@@ -3,8 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
-import '../../widgets/primary_button.dart';
 import '../../services/booking_service.dart';
+import '../../widgets/primary_button.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key, required this.booking});
@@ -204,8 +204,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     });
 
     try {
-      final result = await BookingService.submitReview(
-        widget.booking.booking_id!,
+      final Map<String, dynamic> result = await BookingService.submitReview(
+        widget.booking.booking_id,
         _rating,
         _feedbackController.text.trim(),
       );
@@ -213,12 +213,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       if (result['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Thank you for your feedback!'),
+            SnackBar(
+              content: const Text('Thank you for your feedback!'),
               backgroundColor: AppColors.primaryTeal,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              margin: EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
             ),
           );
           // Navigate to home after successful submission
@@ -226,7 +226,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         }
       } else {
         setState(() {
-          _error = result['message'] ?? 'Failed to submit feedback. Please try again.';
+          _error = (result['message'] as String?) ?? 'Failed to submit feedback. Please try again.';
         });
       }
     } catch (e) {

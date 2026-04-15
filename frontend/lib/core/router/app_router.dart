@@ -79,7 +79,10 @@ class AppRouter {
       ),
       GoRoute(
         path: '/completion',
-        builder: (context, state) => const CompletionScreen(),
+        builder: (context, state) {
+          final booking = state.extra! as Booking;
+          return CompletionScreen(booking: booking);
+        },
       ),
 
       // ── Booking Flow (Pre-Match: Map / Service Details / Vendor Search) ──

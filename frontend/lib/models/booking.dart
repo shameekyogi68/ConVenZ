@@ -62,6 +62,7 @@ class Booking { // Subscription-based model
 
   // ── UI convenience getters that match existing screens ──
   String get serviceName    => selectedService;
+  String get booking_id     => bookingId.toString();
   
   String get vendorName {
     if (vendor != null && vendor!['name'] != null) {

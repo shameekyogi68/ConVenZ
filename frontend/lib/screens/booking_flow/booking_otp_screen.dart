@@ -4,8 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
 import '../../models/booking.dart';
-import '../../widgets/primary_button.dart';
 import '../../services/booking_service.dart';
+import '../../widgets/primary_button.dart';
 
 class BookingOtpScreen extends StatefulWidget {
   const BookingOtpScreen({super.key, required this.booking});
@@ -185,7 +185,7 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
                     Expanded(
                       child: Text(
                         _getInfoMessage(),
-                        style: const TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
                       ),
                     ),
                   ],
@@ -295,8 +295,8 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
 
     try {
       // Call backend to verify OTP and start service
-      final result = await BookingService.verifyJobOtp(
-        widget.booking.booking_id!,
+      final Map<String, dynamic> result = await BookingService.verifyJobOtp(
+        widget.booking.booking_id,
         widget.booking.otpStart.toString(),
       );
 
@@ -307,7 +307,7 @@ class _BookingOtpScreenState extends State<BookingOtpScreen> {
         }
       } else {
         setState(() {
-          _error = result['message'] ?? 'Verification failed. Please try again.';
+          _error = (result['message'] as String?) ?? 'Verification failed. Please try again.';
         });
       }
     } catch (e) {
