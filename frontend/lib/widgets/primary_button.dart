@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../config/app_colors.dart';
+import '../config/app_theme.dart';
 
 class PrimaryButton extends StatelessWidget {
 
@@ -25,15 +25,7 @@ class PrimaryButton extends StatelessWidget {
       height: 56,
       child: ElevatedButton(
         onPressed: isDisabled ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryTeal,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primaryTeal.withOpacity(0.4),
-          disabledForegroundColor: Colors.white70,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-        ),
+        style: AppTheme.primaryButton,
         child: isLoading
             ? const SizedBox(
                 width: 22,
@@ -48,19 +40,11 @@ class PrimaryButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(icon, size: 20),
-                      const SizedBox(width: 8),
-                      Text(text,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.3)),
+                      const SizedBox(width: AppTheme.spacing8),
+                      Text(text, style: AppTheme.subtitle1.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
                     ],
                   )
-                : Text(text,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.3)),
+                : Text(text, style: AppTheme.subtitle1.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }

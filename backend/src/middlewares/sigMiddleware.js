@@ -90,7 +90,11 @@ export const verifySignature = (req, res, next) => {
       .digest("hex");
 
     if (signature !== expectedSignature) {
-      logger.error(`🚨 SIGNATURE_ERROR | Mismatch! Expected sig for: ${dataToSign}`);
+      logger.error(`🚨 SIGNATURE_ERROR | Mismatch!`);
+      logger.error(`🚨 Data to sign: ${dataToSign}`);
+      logger.error(`🚨 Received signature: ${signature}`);
+      logger.error(`🚨 Expected signature: ${expectedSignature}`);
+      logger.error(`🚨 Signature length - Received: ${signature.length}, Expected: ${expectedSignature.length}`);
       return res.status(403).json({
         success: false,
         message: "Security violation: Invalid request signature",

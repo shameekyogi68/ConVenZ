@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
-
 import 'package:dio/dio.dart';
 
 import '../config/app_constants.dart';
@@ -9,68 +8,61 @@ import '../utils/app_logger.dart';
 import '../utils/shared_prefs.dart';
 
 class ApiService {
-  static String get baseUrl => AppConstants.userBaseUrl;
+  static late Dio _dio;
+  static bool _isInitialized = false;
 
-
-
-  static Dio? _dio;
-
-  // 🚀 In-Memory Cache to drastically reduce server load (10/10 optimization)
+  // 🚀 In-Memory Cache to reduce server load
   static final Map<String, _CacheEntry> _cache = {};
   static const Duration _cacheDuration = Duration(minutes: 1);
 
-  static Dio get _client {
-    if (_dio != null) {
-      return _dio!;
+  /// Initialize the API service with performance interceptors and security signing
+  static void initialize() {
+    if (_isInitialized) {
+      return;
     }
 
     _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
+      baseUrl: AppConstants.apiBaseUrl,
       connectTimeout: const Duration(seconds: 45),
       receiveTimeout: const Duration(seconds: 45),
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
     ));
 
-    // ── INTERCEPTORS ──
-    _dio!.interceptors.add(InterceptorsWrapper(
+    // ── INTERCEPTORS (Signing, Auth, Logging, Session) ──
+    _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
+        // 1. Auth Token
         final String? token = SharedPrefs.getToken();
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
-        // 🔐 REQUEST SIGNING (HMAC-SHA256)
-        // This ensures the request hasn't been tampered with and comes from the official app.
+        // 2. 🔐 HMAC Request Signing
         try {
-          final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+          final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
           final String secret = AppConstants.apiSigningSecret;
           
-          // Data to sign: METHOD|PATH|TIMESTAMP|BODY
-          // Use only the relative path to avoid protocol/host mismatches in cloud environments
-          String path = options.path;
-          if (path.startsWith('http')) {
-            final Uri uri = Uri.parse(path);
-            path = uri.path;
-          }
+          // Use the fully resolved URI path (includes /api/v1 prefix) 
+          // to match backend verification logic exactly.
+          final String path = options.uri.path;
           
-          var bodyString = '';
+          String bodyString = '';
           if (options.data != null) {
             if (options.data is Map && (options.data as Map).isEmpty) {
               options.data = null;
-              bodyString = '';
             } else if (options.data is List && (options.data as List).isEmpty) {
               options.data = null;
-              bodyString = '';
             } else {
               bodyString = jsonEncode(options.data);
             }
           }
           
-          final dataToSign = '${options.method.toUpperCase()}|$path|$timestamp|$bodyString';
-          final hmac = Hmac(sha256, utf8.encode(secret));
-          final signature = hmac.convert(utf8.encode(dataToSign)).toString();
+          final String dataToSign = '${options.method.toUpperCase()}|$path|$timestamp|$bodyString';
+          final Hmac hmac = Hmac(sha256, utf8.encode(secret));
+          final String signature = hmac.convert(utf8.encode(dataToSign)).toString();
           
           options.headers['X-Signature'] = signature;
           options.headers['X-Timestamp'] = timestamp;
@@ -99,150 +91,176 @@ class ApiService {
       },
     ));
 
-    return _dio!;
+    _isInitialized = true;
   }
 
-  // -----------------------
-  // POST REQUEST (absolute URL)
-  // -----------------------
-  static Future<Map<String, dynamic>> postUrl(
-      String absoluteUrl, Map<String, dynamic> data, {int retries = 3}) async {
-    for (var attempt = 1; attempt <= retries; attempt++) {
-      try {
-        final Response<Map<String, dynamic>> response =
-            await _client.post<Map<String, dynamic>>(
-          absoluteUrl,
-          data: data,
-        );
-        return _handleDioResponse(response);
-      } on DioException catch (e) {
-        // Retry on connection errors (server might be waking up)
-        if (attempt < retries &&
-            (e.type == DioExceptionType.connectionError ||
-                e.type == DioExceptionType.connectionTimeout)) {
-          AppLogger.w('⚠️ Request failed (attempt $attempt/$retries). Retrying in 6s...');
-          await Future<void>.delayed(const Duration(seconds: 6));
-          continue;
-        }
-        return _handleDioException(e);
-      } catch (e) {
-        return _handleException(e);
-      }
+  static Dio get _client {
+    if (!_isInitialized) {
+      initialize();
     }
-    return {'success': false, 'message': 'Server is unavailable. Please try again later.'};
+    return _dio;
   }
 
-  // -----------------------
-  // GET REQUEST (absolute URL)
-  // -----------------------
-  static Future<Map<String, dynamic>> getUrl(String absoluteUrl,
-      {int retries = 3}) async {
-        
-    // 1️⃣ Check Cache
-    final _CacheEntry? cached = _cache[absoluteUrl];
+  // ------------------------------------------------------------
+  /// GET REQUEST with caching and auto-retry
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> get(String endpoint, {int retries = 3}) async {
+    final fullUrl = endpoint.startsWith('http') ? endpoint : '${AppConstants.apiBaseUrl}$endpoint';
+    
+    // 1. Check Cache
+    final _CacheEntry? cached = _cache[fullUrl];
     if (cached != null && DateTime.now().isBefore(cached.expiry)) {
-      AppLogger.d('⚡ CACHE HIT: $absoluteUrl');
+      AppLogger.d('⚡ CACHE HIT: $fullUrl');
       return cached.data;
     }
 
-    // 2️⃣ Network Request
+    // 2. Network Request with Retries
     for (var attempt = 1; attempt <= retries; attempt++) {
       try {
-        final Response<Map<String, dynamic>> response =
-            await _client.get<Map<String, dynamic>>(absoluteUrl);
-            
-        final Map<String, dynamic> responseData = _handleDioResponse(response);
+        final Response<dynamic> response = await _client.get(endpoint);
+        final Map<String, dynamic> result = _handleResponse(response);
         
-        // Save to Cache if successful
-        if (responseData['success'] == true) {
-           _cache[absoluteUrl] = _CacheEntry(
-             data: responseData,
-             expiry: DateTime.now().add(_cacheDuration),
-           );
+        if (result['success'] == true) {
+          _cache[fullUrl] = _CacheEntry(
+            data: result,
+            expiry: DateTime.now().add(_cacheDuration),
+          );
         }
-        
-        return responseData;
+        return result;
       } on DioException catch (e) {
-        // Retry on connection errors (server might be waking up)
-        if (attempt < retries &&
-            (e.type == DioExceptionType.connectionError ||
-                e.type == DioExceptionType.connectionTimeout)) {
+        if (attempt < retries && _shouldRetry(e)) {
           AppLogger.w('⚠️ GET failed (attempt $attempt/$retries). Retrying in 6s...');
           await Future<void>.delayed(const Duration(seconds: 6));
           continue;
         }
-        return _handleDioException(e);
+        return _handleError(e);
       } catch (e) {
-        return _handleException(e);
+        return _handleGeneralError(e);
       }
     }
-    return {'success': false, 'message': 'Server is unavailable. Please try again later.'};
+    return {'success': false, 'message': 'Network timeout. Please try again.'};
   }
 
-  // -----------------------
-  // CONVENIENCE METHODS
-  // -----------------------
-  static Future<Map<String, dynamic>> post(
-      String endpoint, Map<String, dynamic> data) async {
-    return postUrl(endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint', data);
+  // ------------------------------------------------------------
+  /// POST REQUEST with auto-retry
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {int retries = 3}) async {
+    for (var attempt = 1; attempt <= retries; attempt++) {
+      try {
+        final Response<dynamic> response = await _client.post(endpoint, data: data);
+        final Map<String, dynamic> result = _handleResponse(response);
+        return result;
+      } on DioException catch (e) {
+        if (attempt < retries && _shouldRetry(e)) {
+          AppLogger.w('⚠️ POST failed (attempt $attempt/$retries). Retrying in 6s...');
+          await Future<void>.delayed(const Duration(seconds: 6));
+          continue;
+        }
+        return _handleError(e);
+      } catch (e) {
+        return _handleGeneralError(e);
+      }
+    }
+    return {'success': false, 'message': 'Network timeout. Please try again.'};
   }
 
-  static Future<Map<String, dynamic>> get(String endpoint) async {
-    return getUrl(endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint');
+  // ------------------------------------------------------------
+  /// PUT REQUEST
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data) async {
+    try {
+      final Response<dynamic> response = await _client.put(endpoint, data: data);
+      return _handleResponse(response);
+    } on DioException catch (e) {
+      return _handleError(e);
+    } catch (e) {
+      return _handleGeneralError(e);
+    }
   }
 
-  // -----------------------
-  // HANDLERS
-  // -----------------------
-
-  static Map<String, dynamic> _handleDioResponse(Response<Map<String, dynamic>> response) {
-    return response.data ?? {'success': true};
+  // ------------------------------------------------------------
+  /// DELETE REQUEST
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> delete(String endpoint) async {
+    try {
+      final Response<dynamic> response = await _client.delete(endpoint);
+      return _handleResponse(response);
+    } on DioException catch (e) {
+      return _handleError(e);
+    } catch (e) {
+      return _handleGeneralError(e);
+    }
   }
 
-  static Map<String, dynamic> _handleDioException(DioException e) {
-    if (e.type == DioExceptionType.connectionTimeout || 
-        e.type == DioExceptionType.receiveTimeout || 
-        e.type == DioExceptionType.sendTimeout) {
-      return {'success': false, 'message': 'The server took too long to respond. Please check your internet speed and try again.'};
+  // ------------------------------------------------------------
+  /// Backward compatibility aliases
+  // ------------------------------------------------------------
+  static Future<Map<String, dynamic>> getUrl(String url) => get(url);
+  static Future<Map<String, dynamic>> postUrl(String url, Map<String, dynamic> data) => post(url, data);
+
+  // ------------------------------------------------------------
+  // PRIVATE HANDLERS
+  // ------------------------------------------------------------
+
+  static bool _shouldRetry(DioException e) {
+    return e.type == DioExceptionType.connectionError ||
+           e.type == DioExceptionType.connectionTimeout ||
+           e.type == DioExceptionType.receiveTimeout;
+  }
+
+  static Map<String, dynamic> _handleResponse(Response<dynamic> response) {
+    final dynamic data = response.data;
+    if (data is Map<String, dynamic>) {
+      // If backend didn't wrap in 'success', we assume success if statusCode is 2xx
+      if (!data.containsKey('success')) {
+        return {'success': true, 'data': data};
+      }
+      return data;
+    }
+    return {'success': true, 'data': data};
+  }
+
+  static Map<String, dynamic> _handleError(DioException e) {
+    final Response<dynamic>? response = e.response;
+    final int? statusCode = response?.statusCode;
+    
+    // 1. Extract backend message
+    if (response?.data is Map<String, dynamic>) {
+      final data = response!.data as Map<String, dynamic>;
+      if (data.containsKey('message')) {
+        return {
+          'success': false,
+          'message': data['message'].toString(),
+          'statusCode': statusCode,
+        };
+      }
+    }
+
+    // 2. Handle specific network errors
+    if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+      return {'success': false, 'message': 'Connection timed out. Please try again.', 'statusCode': statusCode};
     }
     
     if (e.type == DioExceptionType.connectionError) {
-      if (e.message?.contains('CERTIFICATE_VERIFY_FAILED') ?? false) {
-        return {'success': false, 'message': 'Secure connection failed. Please ensure your device date and time are accurate.'};
-      }
-      return {'success': false, 'message': 'No internet connection detected. Please check your Wi-Fi or mobile data.'};
+      return {'success': false, 'message': 'Network unavailable. Please check your connection.', 'statusCode': statusCode};
     }
 
-    // Capture standard backend JSON errors
-    final Response<dynamic>? response = e.response;
-    if (response != null) {
-      if (response.data is Map<String, dynamic>) {
-        final data = response.data as Map<String, dynamic>;
-        // Bubble up clean backend validation errors
-        if (data.containsKey('message')) {
-          return data;
-        }
-      }
-      
-      // Fallback for 500s or HTML dumps from Render when server crashes
-      if (response.statusCode != null && response.statusCode! >= 500) {
-        return {'success': false, 'message': 'Our servers are currently overloaded. Please try again in a few moments.'};
-      }
-    }
-
-    return {'success': false, 'message': 'We encountered a minor communication hiccup. Please try again.'};
+    // 3. Fallback
+    return {
+      'success': false, 
+      'message': e.message ?? 'An unexpected error occurred.',
+      'statusCode': statusCode,
+    };
   }
 
-  static Map<String, dynamic> _handleException(Object e) {
-    // We log the real error for developers, but show a polished message to the standard user
-    AppLogger.e('Unhandled Internal Exception', e);
-    return {'success': false, 'message': 'Oops! Something went wrong on our end. Please restart the app if this persists.'};
+  static Map<String, dynamic> _handleGeneralError(dynamic e) {
+    AppLogger.e('Unhandled ApiService Exception', e);
+    return {'success': false, 'message': 'Internal system error. Please restart the app.'};
   }
 }
 
 class _CacheEntry {
   _CacheEntry({required this.data, required this.expiry});
-
   final Map<String, dynamic> data;
   final DateTime expiry;
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/app_colors.dart';
+import '../../config/app_theme.dart';
 import '../../models/booking.dart';
 import '../../widgets/primary_button.dart';
 
@@ -46,7 +47,7 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                    colors: [AppColors.primaryTeal, AppColors.accentMint],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -71,31 +72,30 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
           // ── Content ──
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppTheme.spacing24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Status badge
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing16, vertical: AppTheme.spacing4),
                       decoration: BoxDecoration(
                         color: AppColors.accentMint.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppTheme.radius20),
                         border: Border.all(color: AppColors.accentMint.withOpacity(0.4)),
                       ),
                       child: Text(
                         _getStatusText(),
-                        style: const TextStyle(
+                        style: AppTheme.caption.copyWith(
                           color: AppColors.primaryTeal,
-                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ).animate().fade(duration: 400.ms).slideY(begin: 0.2, end: 0),
+                  ).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppTheme.spacing32),
 
                   // Info card
                   _buildInfoCard([
@@ -107,37 +107,34 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
                     _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: (widget.booking.location?['address'] as String?) ?? 'Loading...'),
                   ]).animate().fade(delay: 100.ms, duration: 400.ms).slideY(begin: 0.15, end: 0),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppTheme.spacing32),
 
-                  // CTA
                   PrimaryButton(
                     text: 'Proceed to OTP',
                     isLoading: _isLoading,
                     onPressed: _isLoading ? null : _navigateToOtp,
                   ).animate().fade(delay: 200.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTheme.spacing16),
 
                   // Error message
                   if (_error != null)
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
+                    Container(
+                      padding: const EdgeInsets.all(AppTheme.spacing12),
+                      margin: const EdgeInsets.only(bottom: AppTheme.spacing16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(AppTheme.radius12),
+                        border: Border.all(color: Colors.red.shade200),
                       ),
-                    ),
+                      child: Text(
+                        _error!,
+                        style: AppTheme.caption.copyWith(color: Colors.red.shade700),
+                        textAlign: TextAlign.center,
+                      ),
+                    ).animate().fade(delay: 250.ms),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppTheme.spacing32),
 
                   Center(
                     child: Text(
@@ -169,56 +166,15 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
     }
   }
 
-  Widget _buildInfoCard(List<_InfoRow> rows) {
+  Widget _buildInfoCard(List<Widget> rows) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: AppColors.primaryTeal.withOpacity(0.07), blurRadius: 20, offset: const Offset(0, 8)),
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2)),
-        ],
-      ),
+      padding: const EdgeInsets.all(AppTheme.spacing20),
+      decoration: AppTheme.primaryContainer,
       child: Column(
-        children: [
-          for (int i = 0; i < rows.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryTeal.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(rows[i].icon, color: AppColors.primaryTeal, size: 20),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          rows[i].label,
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          rows[i].value,
-                          style: const TextStyle(fontSize: 15, color: AppColors.darkGrey, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (i < rows.length - 1)
-              Divider(height: 1, indent: 20, endIndent: 20, color: Colors.grey.shade100),
-          ],
-        ],
+        children: rows.map((row) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacing12),
+          child: row,
+        )).toList(),
       ),
     );
   }
@@ -243,9 +199,35 @@ class _VendorDetailsScreenState extends State<VendorDetailsScreen> {
   }
 }
 
-class _InfoRow {
+class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.icon, required this.label, required this.value});
   final IconData icon;
   final String label;
   final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.primaryTeal.withOpacity(0.7)),
+        const SizedBox(width: AppTheme.spacing12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppTheme.caption.copyWith(color: Colors.grey.shade600)),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: AppTheme.subtitle1.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

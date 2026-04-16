@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../config/app_colors.dart';
+import '../../../config/app_theme.dart';
 import '../../../models/booking.dart';
 import '../../../services/booking_service.dart';
 
@@ -114,7 +115,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -146,7 +147,7 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                         height: 100,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF1A5A6D), Color(0xFF2ED199)],
+                            colors: [AppColors.primaryTeal, AppColors.accentMint],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -173,54 +174,54 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                 },
               ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: AppTheme.spacing48),
 
               const Text(
                 'Searching for Vendor...',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryTeal),
+                style: AppTheme.heading2,
                 textAlign: TextAlign.center,
               ).animate().fade(delay: 100.ms).slideY(begin: 0.2, end: 0, duration: 400.ms),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.spacing8),
 
               Text(
                 'Finding the best ${widget.serviceName} vendor near you',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                style: AppTheme.subtitle2.copyWith(color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ).animate().fade(delay: 150.ms),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: AppTheme.spacing20),
 
               // Booking ID + elapsed time
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing12, vertical: AppTheme.spacing4),
                     decoration: BoxDecoration(
                       color: AppColors.primaryTeal.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppTheme.radius20),
                     ),
                     child: Text(
                       'ID: ${widget.bookingId.length > 6 ? widget.bookingId.substring(widget.bookingId.length - 6) : widget.bookingId}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primaryTeal),
+                      style: AppTheme.caption.copyWith(color: AppColors.primaryTeal),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppTheme.spacing8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacing12, vertical: AppTheme.spacing4),
                     decoration: BoxDecoration(
                       color: AppColors.accentMint.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppTheme.radius20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.timer_outlined, size: 13, color: AppColors.accentMint),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppTheme.spacing4),
                         Text(
                           _elapsedLabel,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accentMint),
+                          style: AppTheme.caption.copyWith(color: AppColors.accentMint),
                         ),
                       ],
                     ),
@@ -228,57 +229,51 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                 ],
               ).animate().fade(delay: 200.ms),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: AppTheme.spacing32),
 
               // Progress bar
               Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppTheme.radius20),
                   color: AppColors.primaryTeal.withOpacity(0.1),
                 ),
                 child: LinearProgressIndicator(
                   value: (_secondsElapsed / 60.0).clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppTheme.radius20),
                   valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentMint),
                 ),
               ).animate().fade(delay: 250.ms),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: AppTheme.spacing8),
 
               Text(
                 '${(60 - _secondsElapsed).clamp(0, 60)}s remaining',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                style: AppTheme.caption.copyWith(color: Colors.grey.shade500),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: AppTheme.spacing40),
 
               // Info card
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: AppColors.primaryTeal.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 4)),
-                  ],
-                ),
+                padding: const EdgeInsets.all(AppTheme.spacing16),
+                decoration: AppTheme.primaryContainer,
                 child: Row(
                   children: [
                     const Icon(Icons.notifications_active_rounded, color: AppColors.accentMint, size: 20),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppTheme.spacing12),
                     Expanded(
                       child: Text(
                         "Keep the app open. You'll be notified instantly when a vendor accepts.",
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+                        style: AppTheme.caption.copyWith(color: Colors.grey.shade700, height: 1.4),
                       ),
                     ),
                   ],
                 ),
               ).animate().fade(delay: 300.ms),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: AppTheme.spacing24),
 
               SizedBox(
                 width: double.infinity,
@@ -295,16 +290,11 @@ class _VendorSearchingScreenState extends State<VendorSearchingScreen>
                   },
                   icon: const Icon(Icons.close_rounded, size: 18),
                   label: const Text('Cancel Search', style: TextStyle(fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryTeal,
-                    side: BorderSide(color: AppColors.primaryTeal.withOpacity(0.4)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-                  ),
+                  style: AppTheme.secondaryButton,
                 ),
               ).animate().fade(delay: 350.ms),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: AppTheme.spacing12),
 
               // QA escape hatch: assign a mock vendor to continue testing flows
               SizedBox(

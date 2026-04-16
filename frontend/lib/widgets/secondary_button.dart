@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../config/app_colors.dart';
+import '../config/app_theme.dart';
 
 class SecondaryButton extends StatelessWidget {
 
@@ -20,21 +20,17 @@ class SecondaryButton extends StatelessWidget {
       height: 56,
       child: OutlinedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryTeal,
-          side: BorderSide(color: AppColors.primaryTeal.withOpacity(0.5), width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-        ),
+        style: AppTheme.secondaryButton,
         child: icon != null
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icon, size: 20),
                   const SizedBox(width: 8),
-                  Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+                  Text(text, style: AppTheme.subtitle1.copyWith(fontWeight: FontWeight.bold)),
                 ],
               )
-            : Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+            : Text(text, style: AppTheme.subtitle1.copyWith(fontWeight: FontWeight.bold)),
       ),
     );
   }
